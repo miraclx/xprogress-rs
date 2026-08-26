@@ -13,17 +13,16 @@
 //! never touches a terminal, so a single owner controls drawing and there is no shared-stdout race.
 //!
 //! ```
-//! use xprogress::{Bar, Units};
+//! use xprogress::Bar;
 //!
-//! let mut bar = Bar::new(Units::new(120), [Units::new(80)]);
-//! for segment in bar.segments_mut() {
-//!     segment.advance(Units::new(40));
-//! }
+//! let mut bar = Bar::new([120u64, 80]); // two chunks, sized in bytes
+//! bar.advance(0, 60u64); // 60 bytes done on chunk 0
 //! let line = bar.render(40);
 //! assert_eq!(line.chars().count(), 40);
 //! ```
 
 mod bar;
+mod pulse;
 mod segment;
 mod style;
 mod target;
@@ -36,6 +35,8 @@ pub mod stream;
 #[cfg(test)]
 mod bar_tests;
 #[cfg(test)]
+mod pulse_tests;
+#[cfg(test)]
 mod segment_tests;
 #[cfg(all(test, feature = "stream"))]
 mod stream_tests;
@@ -47,6 +48,7 @@ mod units_tests;
 mod width_tests;
 
 pub use crate::bar::Bar;
+pub use crate::pulse::Pulse;
 pub use crate::segment::Segment;
 pub use crate::style::Style;
 pub use crate::target::DrawTarget;

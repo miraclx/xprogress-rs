@@ -12,16 +12,16 @@ fn count(line: &str, glyph: char) -> usize {
 
 #[test]
 fn render_is_exactly_the_requested_width() {
-    let bar = Bar::new(Units::new(120), [Units::new(80)]);
+    let bar = Bar::new([120u64, 80]);
     assert_eq!(cells(&bar.render(40)), 40);
     assert_eq!(cells(&bar.render(1)), 1);
     assert_eq!(cells(&bar.render(0)), 0);
 }
 
 #[test]
-fn single_segment_half_done_is_half_filled() {
-    let mut bar = Bar::single(Units::new(100));
-    bar.segments_mut().for_each(|s| s.advance(Units::new(50)));
+fn a_half_done_segment_is_half_filled() {
+    let mut bar = Bar::new([100u64]);
+    bar.advance(0, 50u64);
     let line = bar.render(10);
     assert_eq!(count(&line, '█'), 5);
     assert_eq!(count(&line, '─'), 5);
@@ -29,11 +29,9 @@ fn single_segment_half_done_is_half_filled() {
 
 #[test]
 fn lead_shades_between_done_and_lead() {
-    let mut bar = Bar::single(Units::new(100));
-    bar.segments_mut().for_each(|s| {
-        s.set_done(Units::new(30));
-        s.lead_to(Units::new(70));
-    });
+    let mut bar = Bar::new([100u64]);
+    bar.advance(0, 30u64);
+    bar.lead_to(0, 70u64);
     let line = bar.render(10);
     assert_eq!(count(&line, '█'), 3, "done");
     assert_eq!(count(&line, '▒'), 4, "buffered ahead");
@@ -41,29 +39,34 @@ fn lead_shades_between_done_and_lead() {
 }
 
 #[test]
-fn empty_segments_render_all_blank() {
-    let bar = Bar::new(Units::new(50), [Units::new(50)]);
-    let line = bar.render(10);
+fn unstarted_segments_render_all_blank() {
+    let line = Bar::new([50u64, 50]).render(10);
     assert_eq!(cells(&line), 10);
     assert_eq!(count(&line, '─'), 10);
 }
 
 #[test]
 fn allocation_is_proportional_to_capacity() {
-    let mut bar = Bar::new(Units::new(300), [Units::new(100)]);
-    bar.segments_mut().for_each(|s| s.set_done(s.capacity()));
-    let line = bar.render(40);
+    let mut bar = Bar::new([300u64, 100]);
+    bar.advance(0, 300u64);
+    bar.advance(1, 100u64);
     assert_eq!(
-        count(&line, '█'),
+        count(&bar.render(40), '█'),
         40,
         "3:1 caps fully done fill all 40 cells"
     );
 }
 
 #[test]
+fn advance_on_an_out_of_range_segment_is_a_no_op() {
+    let mut bar = Bar::new([100u64]);
+    bar.advance(9, 50u64);
+    assert!(!bar.segments()[0].is_complete());
+}
+
+#[test]
 fn separator_is_reserved_from_the_width() {
-    let bar =
-        Bar::new(Units::new(50), [Units::new(50)]).with_style(Style::default().with_separator("|"));
+    let bar = Bar::new([50u64, 50]).with_style(Style::default().with_separator("|"));
     let line = bar.render(11);
     assert_eq!(cells(&line), 11);
     assert_eq!(count(&line, '|'), 1);
@@ -71,16 +74,17 @@ fn separator_is_reserved_from_the_width() {
 }
 
 #[test]
-fn zero_capacity_segment_renders_complete() {
-    let line = Bar::single(Units::new(0)).render(8);
-    assert_eq!(count(&line, '█'), 8);
+fn a_bar_with_no_segments_renders_blank() {
+    let bar = Bar::new(core::iter::empty::<u64>());
+    assert_eq!(cells(&bar.render(6)), 6);
+    assert_eq!(count(&bar.render(6), '─'), 6);
 }
 
 #[test]
 fn aggregate_sums_all_segments() {
-    let mut bar = Bar::new(Units::new(100), [Units::new(100)]);
-    bar.segment(0).unwrap().set_done(Units::new(40));
-    bar.segment(1).unwrap().set_done(Units::new(60));
+    let mut bar = Bar::new([100u64, 100]);
+    bar.advance(0, 40u64);
+    bar.advance(1, 60u64);
     let aggregate = bar.aggregate();
     assert_eq!(aggregate.done(), Units::new(100));
     assert_eq!(aggregate.capacity(), Units::new(200));

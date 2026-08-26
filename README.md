@@ -31,14 +31,21 @@ println!("[{line}]");
 
 ## Examples
 
-Run them in a terminal to watch the bar animate. They draw to stderr and are silent when output is
-not a TTY, so they are safe to pipe.
+Run them in a terminal to watch them animate. They draw to stderr and stay silent when output is not
+a TTY, so they are safe to pipe.
 
 ```sh
-cargo run --example download                   # simulated multi-file download, done vs lead shading
+cargo run --example download                   # a download client: parallel chunks, one segment each
+cargo run --example pulsate                    # an indeterminate bar sweeping back and forth
 cargo run --example stream --features stream   # segments driven by live async byte streams
-cargo run --example indicatif_compose          # a segmented line riding inside an indicatif MultiProgress
-cargo run --example snapshot                   # static text frames, no terminal needed, prints the layout
+cargo run --example installer                  # a package manager: per-package segmented bars (via indicatif)
+cargo run --example indicatif_compose          # an xprogress line inside an indicatif MultiProgress
+```
+
+To see the frames without a terminal (logs, CI, or a quick look), dump each frame on its own line:
+
+```sh
+XPROGRESS_DUMP=1 cargo run --example download
 ```
 
 ## Model

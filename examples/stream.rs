@@ -1,15 +1,17 @@
 //! Segments driven by live async byte streams: each segment is advanced by a `SegmentReader` as it
-//! drains a throttled source, and the bar renders from the shared meters.
-//!
-//! Run it in a terminal to watch it animate:
+//! drains a throttled source, and the bar renders from the shared meters. Run in a terminal:
 //!
 //!     cargo run --example stream --features stream
+//!
+//! To see the frames without a terminal:
+//!
+//!     XPROGRESS_DUMP=1 cargo run --example stream --features stream
 
 use core::time::Duration;
 
 use tokio::io::AsyncReadExt as _;
 use xprogress::stream::{Mark, Meter, SegmentReader};
-use xprogress::{Bar, DrawTarget, Units, Width};
+use xprogress::{Bar, Units};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -31,27 +33,16 @@ async fn main() -> std::io::Result<()> {
         });
     }
 
-    let mut bar = Bar::new(
-        Units::new(totals[0]),
-        totals[1..].iter().map(|&t| Units::new(t)),
-    );
-    let mut target = DrawTarget::stderr();
-    let width = Width::TerminalMinus(2).resolve(target.columns(), 60);
-    loop {
-        let mut complete = true;
+    let mut bar = Bar::new(totals);
+    bar.draw()?;
+    while !bar.is_complete() {
         for (index, meter) in meters.iter().enumerate() {
             if let Some(segment) = bar.segment(index) {
                 meter.apply_to(segment);
             }
-            if !meter.snapshot().is_complete() {
-                complete = false;
-            }
         }
-        target.draw(&format!("[{}]", bar.render(width)))?;
-        if complete {
-            break;
-        }
+        bar.draw()?;
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    target.finish(&format!("[{}]  done", bar.render(width)))
+    bar.finish()
 }

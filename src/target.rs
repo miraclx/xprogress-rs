@@ -1,15 +1,18 @@
-//! Where a [`Bar`](crate::Bar) draws: an interactive terminal, or a hidden no-op sink.
+//! Where a bar draws: an interactive terminal, a hidden no-op, or a frame dump.
 
 use std::io::{self, IsTerminal as _, Write as _};
 
-/// Where a bar is drawn. Non-interactive output is a first-class [`DrawTarget::Hidden`] variant, not a
-/// runtime error: drawing to it is a no-op, so piping or redirecting a program's output just works and
-/// the progress state stays queryable.
+/// Where a bar is drawn. Non-interactive output is a first-class state, not a runtime error: drawing
+/// to [`DrawTarget::Hidden`] does nothing and drawing to [`DrawTarget::Dump`] prints each frame on its
+/// own line, so piping, redirecting, logging, and headless capture all just work.
+#[derive(Clone, Copy, Debug)]
 pub enum DrawTarget {
     /// An interactive terminal, redrawn in place on stderr.
     Terminal,
     /// A non-interactive sink that draws nothing.
     Hidden,
+    /// Non-interactive: print each frame on its own line to stdout, for logs, CI, or headless capture.
+    Dump,
 }
 
 impl DrawTarget {
@@ -30,8 +33,26 @@ impl DrawTarget {
         Self::Hidden
     }
 
-    /// Whether this target draws anything.
-    pub fn is_visible(&self) -> bool {
+    /// A target that prints each frame on its own line to stdout.
+    #[must_use]
+    pub fn dump() -> Self {
+        Self::Dump
+    }
+
+    /// [`DrawTarget::Dump`] when the `XPROGRESS_DUMP` environment variable is set (for logs and
+    /// headless capture), otherwise [`DrawTarget::stderr`]. This is the default a [`Bar`](crate::Bar)
+    /// and [`Pulse`](crate::Pulse) use.
+    #[must_use]
+    pub fn from_env() -> Self {
+        if std::env::var_os("XPROGRESS_DUMP").is_some() {
+            Self::Dump
+        } else {
+            Self::stderr()
+        }
+    }
+
+    /// Whether this target redraws in place.
+    pub fn is_interactive(&self) -> bool {
         matches!(self, Self::Terminal)
     }
 
@@ -39,12 +60,12 @@ impl DrawTarget {
     pub fn columns(&self) -> Option<u16> {
         match self {
             Self::Terminal => terminal_size::terminal_size().map(|(width, _)| width.0),
-            Self::Hidden => None,
+            Self::Hidden | Self::Dump => None,
         }
     }
 
-    /// Redraw `line` in place: return to column zero, clear to the end of the line, write, and flush.
-    /// A no-op on a hidden target.
+    /// Show `line` as the current frame: redraw in place on a terminal, print a new line when dumping,
+    /// nothing when hidden.
     pub fn draw(&mut self, line: &str) -> io::Result<()> {
         match self {
             Self::Terminal => {
@@ -53,10 +74,15 @@ impl DrawTarget {
                 stderr.flush()
             }
             Self::Hidden => Ok(()),
+            Self::Dump => {
+                let mut stdout = io::stdout().lock();
+                writeln!(stdout, "{line}")?;
+                stdout.flush()
+            }
         }
     }
 
-    /// Finish drawing: write `tail` and a newline so the final bar stays on screen. A no-op on hidden.
+    /// Finish drawing, leaving `tail` on its own line. Nothing when hidden.
     pub fn finish(&mut self, tail: &str) -> io::Result<()> {
         match self {
             Self::Terminal => {
@@ -65,6 +91,11 @@ impl DrawTarget {
                 stderr.flush()
             }
             Self::Hidden => Ok(()),
+            Self::Dump => {
+                let mut stdout = io::stdout().lock();
+                writeln!(stdout, "{tail}")?;
+                stdout.flush()
+            }
         }
     }
 }

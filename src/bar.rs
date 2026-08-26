@@ -1,51 +1,95 @@
 //! A segmented single-line progress bar.
 
+use std::io;
+
 use unicode_width::UnicodeWidthStr as _;
 
 use crate::segment::Segment;
 use crate::style::Style;
+use crate::target::DrawTarget;
 use crate::units::{Progress, Units};
+use crate::width::Width;
+
+/// Fallback width when the terminal size is unknown (piped or non-interactive output).
+const FALLBACK_WIDTH: u16 = 80;
 
 /// A single line of progress divided into independent [`Segment`]s, rendered side by side.
 ///
-/// A bar always has at least one segment: [`Bar::new`] takes the first capacity separately so an
-/// empty bar cannot be constructed. Each segment receives a share of the width proportional to its
-/// capacity. [`Bar::render`] returns a plain string of an exact cell width; the bar never writes to a
-/// terminal itself, so a caller owns when and where drawing happens.
+/// Build one from the segment sizes, advance segments as work happens, and [`Bar::draw`] to redraw it
+/// in place. By default it draws to stderr at the terminal width and is silent when output is not a
+/// terminal, so the common case is short:
+///
+/// ```no_run
+/// # fn main() -> std::io::Result<()> {
+/// use xprogress::Bar;
+///
+/// let mut bar = Bar::new([40u64, 30, 20]); // one segment per chunk, sizes in whatever unit you count
+/// bar.draw()?;
+/// bar.advance(0, 4096u64); // 4096 more units done on chunk 0
+/// bar.draw()?;
+/// bar.finish()?;
+/// # Ok(()) }
+/// ```
+///
+/// To place the bar inside another display (for example an indicatif `MultiProgress`), use
+/// [`Bar::render`], which returns the line as a plain string and touches no terminal.
 #[derive(Clone, Debug)]
 pub struct Bar {
-    /// Always non-empty, guaranteed by every constructor.
     segments: Vec<Segment>,
     style: Style,
+    target: DrawTarget,
+    width: Width,
 }
 
 impl Bar {
-    /// Build a bar from the first segment capacity plus any further capacities. Taking the first
-    /// separately makes an empty bar unrepresentable.
-    #[must_use]
-    pub fn new(first: Units, rest: impl IntoIterator<Item = Units>) -> Self {
-        let mut segments = vec![Segment::new(first)];
-        segments.extend(rest.into_iter().map(Segment::new));
+    /// Build a bar from its segment sizes. Draws to the terminal at full width by default.
+    pub fn new(sizes: impl IntoIterator<Item = impl Into<Units>>) -> Self {
         Self {
-            segments,
+            segments: sizes.into_iter().map(|s| Segment::new(s.into())).collect(),
             style: Style::default(),
+            target: DrawTarget::from_env(),
+            width: Width::Full,
         }
     }
 
-    /// Build a single-segment bar.
-    #[must_use]
-    pub fn single(capacity: Units) -> Self {
-        Self {
-            segments: vec![Segment::new(capacity)],
-            style: Style::default(),
-        }
-    }
-
-    /// Replace the drawing style.
+    /// Use a specific drawing style.
     #[must_use]
     pub fn with_style(mut self, style: Style) -> Self {
         self.style = style;
         self
+    }
+
+    /// Draw at a specific width instead of the full terminal.
+    #[must_use]
+    pub fn with_width(mut self, width: Width) -> Self {
+        self.width = width;
+        self
+    }
+
+    /// Draw to a specific target instead of the default stderr terminal.
+    #[must_use]
+    pub fn with_target(mut self, target: DrawTarget) -> Self {
+        self.target = target;
+        self
+    }
+
+    /// Advance segment `index`'s confirmed progress by `delta`. A no-op if `index` is out of range.
+    pub fn advance(&mut self, index: usize, delta: impl Into<Units>) {
+        if let Some(segment) = self.segments.get_mut(index) {
+            segment.advance(delta.into());
+        }
+    }
+
+    /// Move segment `index`'s buffered-ahead marker to `at`. A no-op if `index` is out of range.
+    pub fn lead_to(&mut self, index: usize, at: impl Into<Units>) {
+        if let Some(segment) = self.segments.get_mut(index) {
+            segment.lead_to(at.into());
+        }
+    }
+
+    /// Borrow a segment by position, for finer control than [`Bar::advance`].
+    pub fn segment(&mut self, index: usize) -> Option<&mut Segment> {
+        self.segments.get_mut(index)
     }
 
     /// The segments, in order.
@@ -53,14 +97,9 @@ impl Bar {
         &self.segments
     }
 
-    /// Mutably borrow every segment, to advance them.
-    pub fn segments_mut(&mut self) -> impl Iterator<Item = &mut Segment> {
-        self.segments.iter_mut()
-    }
-
-    /// Mutably borrow one segment by position, if it exists.
-    pub fn segment(&mut self, index: usize) -> Option<&mut Segment> {
-        self.segments.get_mut(index)
+    /// Whether every segment has reached its capacity.
+    pub fn is_complete(&self) -> bool {
+        self.segments.iter().all(|segment| segment.is_complete())
     }
 
     /// The aggregate progress across all segments, summing done, lead, and capacity.
@@ -76,16 +115,32 @@ impl Bar {
         Progress::new(done, lead, capacity)
     }
 
-    /// Render the bar as a string of exactly `width` display cells (with the default single-width
-    /// glyphs), segments composited side by side and joined by the style separator.
-    ///
-    /// The separators' display width is reserved first; the remaining width is divided across
-    /// segments in proportion to capacity, with rounding slack handed to the segments with the
-    /// largest remainders so the line is always exactly `width` cells.
+    /// Redraw the bar in place. A no-op when the target is not a terminal.
+    pub fn draw(&mut self) -> io::Result<()> {
+        let line = self.rendered();
+        self.target.draw(&line)
+    }
+
+    /// Finish drawing, leaving the completed bar on its own line. A no-op when not a terminal.
+    pub fn finish(&mut self) -> io::Result<()> {
+        let line = self.rendered();
+        self.target.finish(&line)
+    }
+
+    /// Render at the bar's own resolved width.
+    fn rendered(&self) -> String {
+        self.render(self.width.resolve(self.target.columns(), FALLBACK_WIDTH))
+    }
+
+    /// Render the bar as a string of exactly `width` display cells, segments side by side joined by the
+    /// style separator. Pure: touches no terminal, so it composes inside other progress displays.
     #[must_use]
     pub fn render(&self, width: u16) -> String {
+        if self.segments.is_empty() {
+            return self.style.blank().to_string().repeat(usize::from(width));
+        }
         let separator = self.style.separator();
-        let gaps = self.segments.len().saturating_sub(1) as u16;
+        let gaps = (self.segments.len() - 1) as u16;
         let separators_width = display_width(separator).saturating_mul(gaps);
         let inner = width.saturating_sub(separators_width);
         let cells = allocate(&self.segments, inner);

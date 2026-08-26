@@ -27,6 +27,18 @@ impl From<u64> for Units {
     }
 }
 
+impl From<u32> for Units {
+    fn from(count: u32) -> Self {
+        Self(u64::from(count))
+    }
+}
+
+impl From<usize> for Units {
+    fn from(count: usize) -> Self {
+        Self(count as u64)
+    }
+}
+
 /// A percentage clamped to `0.0..=100.0` at construction, so an out-of-range percent is
 /// unrepresentable.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Default, Debug)]
