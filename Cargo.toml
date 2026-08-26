@@ -19,6 +19,7 @@ unicode-width = "0.2"
 stream = ["dep:tokio"]
 
 [dev-dependencies]
+indicatif = "0.17"
 tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "time"] }
 
 [[example]]

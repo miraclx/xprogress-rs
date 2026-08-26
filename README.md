@@ -37,6 +37,7 @@ not a TTY, so they are safe to pipe.
 ```sh
 cargo run --example download                   # simulated multi-file download, done vs lead shading
 cargo run --example stream --features stream   # segments driven by live async byte streams
+cargo run --example indicatif_compose          # a segmented line riding inside an indicatif MultiProgress
 ```
 
 ## Model
