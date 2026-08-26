@@ -26,16 +26,24 @@
 mod bar;
 mod segment;
 mod style;
+mod target;
 mod units;
+mod width;
 
 #[cfg(test)]
 mod bar_tests;
 #[cfg(test)]
 mod segment_tests;
 #[cfg(test)]
+mod target_tests;
+#[cfg(test)]
 mod units_tests;
+#[cfg(test)]
+mod width_tests;
 
 pub use crate::bar::Bar;
 pub use crate::segment::Segment;
 pub use crate::style::Style;
+pub use crate::target::DrawTarget;
 pub use crate::units::{Percent, Progress, Units};
+pub use crate::width::Width;
