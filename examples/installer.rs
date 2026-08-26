@@ -9,7 +9,7 @@ use core::time::Duration;
 use std::thread::sleep;
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use xprogress::Bar;
+use xprogress::{Bar, Color, Style};
 
 #[derive(Clone, Copy)]
 struct Package {
@@ -44,7 +44,12 @@ fn main() -> Result<(), Box<dyn core::error::Error>> {
         line.set_prefix(package.name);
 
         // Download this package's chunks in parallel, advancing each segment as its bytes arrive.
-        let mut bar = Bar::new(package.chunks.iter().copied());
+        let style = Style::default()
+            .with_color(Color::Yellow)
+            .with_filler('▰')
+            .with_blank('▱')
+            .with_separator("·");
+        let mut bar = Bar::new(package.chunks.iter().copied()).with_style(style);
         while !bar.is_complete() {
             for (chunk, &size) in package.chunks.iter().enumerate() {
                 bar.advance(chunk, size / 25 + 1);

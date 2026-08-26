@@ -1,6 +1,23 @@
 use crate::bar::Bar;
-use crate::style::Style;
+use crate::style::{Color, Style};
 use crate::units::Units;
+
+fn strip_ansi(line: &str) -> String {
+    let mut out = String::new();
+    let mut chars = line.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for esc in chars.by_ref() {
+                if esc == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
 
 fn cells(line: &str) -> usize {
     line.chars().count()
@@ -89,4 +106,24 @@ fn aggregate_sums_all_segments() {
     assert_eq!(aggregate.done(), Units::new(100));
     assert_eq!(aggregate.capacity(), Units::new(200));
     assert_eq!(aggregate.percent().get(), 50.0);
+}
+
+#[test]
+fn color_adds_ansi_but_keeps_the_display_width() {
+    let mut bar = Bar::new([100u64]).with_style(Style::default().with_color(Color::Cyan));
+    bar.advance(0, 50u64);
+    let line = bar.render(10);
+    assert!(line.contains("\x1b[36m"), "cyan code present");
+    assert!(line.contains("\x1b[0m"), "reset present");
+    assert_eq!(cells(&strip_ansi(&line)), 10, "still exactly ten cells");
+}
+
+#[test]
+fn header_caps_the_filled_region() {
+    let mut bar = Bar::new([100u64]).with_style(Style::default().with_header('>'));
+    bar.advance(0, 50u64);
+    let line = bar.render(10);
+    assert_eq!(count(&line, '█'), 4, "four solid");
+    assert_eq!(count(&line, '>'), 1, "one header tip");
+    assert_eq!(count(&line, '─'), 5, "five empty");
 }

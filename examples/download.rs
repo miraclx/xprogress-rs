@@ -10,13 +10,13 @@
 use core::time::Duration;
 use std::thread::sleep;
 
-use xprogress::Bar;
+use xprogress::{Bar, Color, Style};
 
 fn main() -> std::io::Result<()> {
     const MIB: u64 = 1024 * 1024;
     let chunks = [40 * MIB, 30 * MIB, 20 * MIB, 10 * MIB];
 
-    let mut bar = Bar::new(chunks);
+    let mut bar = Bar::new(chunks).with_style(Style::default().with_color(Color::Cyan));
     bar.draw()?;
 
     // Bytes arrive per chunk at different rates until every chunk is whole.

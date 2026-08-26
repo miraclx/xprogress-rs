@@ -13,12 +13,11 @@ file, or any "many small things at once" glance.
 
 ## Demo
 
-A download client (parallel chunks, one segment each), a package-manager installer (a segmented bar
-per package, composed with indicatif), and an indeterminate pulse:
+A download client: one file in parallel chunks, a segment per chunk, colored and animating in place:
 
 ![download](media/download.gif)
 
-![installer](media/installer.gif)
+An indeterminate pulse, for work with no known total:
 
 ![pulsate](media/pulsate.gif)
 

@@ -211,7 +211,9 @@ fn even_split(width: u16, count: usize) -> Vec<u16> {
     spans
 }
 
-/// Append one segment's `span` cells to `out`: filler up to done, leader up to lead, then blanks.
+/// Append one segment's `span` cells to `out`: the filled region (done, capped by the header glyph,
+/// then buffered-ahead) optionally colored, then the empty region. Color codes are zero display width,
+/// so the segment is still exactly `span` cells wide.
 fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String) {
     if span == 0 {
         return;
@@ -224,11 +226,30 @@ fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String)
         let lead = scale(segment.lead().get(), capacity, span).max(done);
         (done, lead)
     };
-    for _ in 0..done_cells {
-        out.push(style.filler());
+
+    if let Some(color) = style.color() {
+        out.push_str("\x1b[");
+        out.push_str(color.code());
+        out.push('m');
+    }
+    match style.header() {
+        Some(header) if done_cells > 0 => {
+            for _ in 0..done_cells - 1 {
+                out.push(style.filler());
+            }
+            out.push(header);
+        }
+        _ => {
+            for _ in 0..done_cells {
+                out.push(style.filler());
+            }
+        }
     }
     for _ in done_cells..lead_cells {
         out.push(style.leader());
+    }
+    if style.color().is_some() {
+        out.push_str("\x1b[0m");
     }
     for _ in lead_cells..span {
         out.push(style.blank());
