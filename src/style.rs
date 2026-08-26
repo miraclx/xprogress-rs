@@ -42,7 +42,7 @@ pub struct Style {
     leader: char,
     blank: char,
     header: Option<char>,
-    separator: String,
+    separator: Option<char>,
     color: Option<Color>,
 }
 
@@ -83,11 +83,11 @@ impl Style {
         self
     }
 
-    /// Set the separator drawn between adjacent segments. Its display width is reserved out of the bar
+    /// Set the glyph drawn between adjacent segments. Its display width is reserved out of the bar
     /// width so the rendered line stays exact.
     #[must_use]
-    pub fn with_separator(mut self, separator: impl Into<String>) -> Self {
-        self.separator = separator.into();
+    pub fn with_separator(mut self, glyph: char) -> Self {
+        self.separator = Some(glyph);
         self
     }
 
@@ -116,9 +116,9 @@ impl Style {
         self.color
     }
 
-    /// The separator drawn between segments.
-    pub fn separator(&self) -> &str {
-        &self.separator
+    /// The separator glyph drawn between segments, if any.
+    pub const fn separator(&self) -> Option<char> {
+        self.separator
     }
 }
 
@@ -130,7 +130,7 @@ impl Default for Style {
             leader: '▒',
             blank: '─',
             header: None,
-            separator: String::new(),
+            separator: None,
             color: None,
         }
     }

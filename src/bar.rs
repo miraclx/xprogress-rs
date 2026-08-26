@@ -2,7 +2,7 @@
 
 use std::io;
 
-use unicode_width::UnicodeWidthStr as _;
+use unicode_width::UnicodeWidthChar as _;
 
 use crate::segment::Segment;
 use crate::style::Style;
@@ -141,14 +141,16 @@ impl Bar {
         }
         let separator = self.style.separator();
         let gaps = (self.segments.len() - 1) as u16;
-        let separators_width = display_width(separator).saturating_mul(gaps);
+        let separators_width = separator.map_or(0, char_width).saturating_mul(gaps);
         let inner = width.saturating_sub(separators_width);
         let cells = allocate(&self.segments, inner);
 
         let mut out = String::new();
         for (index, (segment, span)) in self.segments.iter().zip(cells).enumerate() {
-            if index > 0 {
-                out.push_str(separator);
+            if index > 0
+                && let Some(glyph) = separator
+            {
+                out.push(glyph);
             }
             render_segment(segment, span, &self.style, &mut out);
         }
@@ -265,7 +267,7 @@ fn scale(value: u64, capacity: u64, span: u16) -> u16 {
     cells.min(span) as u16
 }
 
-/// The display width of a string in terminal cells, saturating at [`u16::MAX`].
-fn display_width(text: &str) -> u16 {
-    text.width().min(usize::from(u16::MAX)) as u16
+/// The display width of a glyph in terminal cells (zero for a control character).
+fn char_width(glyph: char) -> u16 {
+    glyph.width().unwrap_or(0) as u16
 }

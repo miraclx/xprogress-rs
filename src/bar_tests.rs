@@ -83,7 +83,7 @@ fn advance_on_an_out_of_range_segment_is_a_no_op() {
 
 #[test]
 fn separator_is_reserved_from_the_width() {
-    let bar = Bar::new([50u64, 50]).with_style(Style::default().with_separator("|"));
+    let bar = Bar::new([50u64, 50]).with_style(Style::default().with_separator('|'));
     let line = bar.render(11);
     assert_eq!(cells(&line), 11);
     assert_eq!(count(&line, '|'), 1);

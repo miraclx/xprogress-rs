@@ -87,7 +87,9 @@ impl DrawTarget {
         match self {
             Self::Terminal => {
                 let mut stderr = io::stderr().lock();
-                writeln!(stderr, "{tail}")?;
+                // Redraw the final frame in place, then commit it with a newline, so the completed bar
+                // appears once rather than being printed a second time after the last in-place draw.
+                writeln!(stderr, "\r\x1b[K{tail}")?;
                 stderr.flush()
             }
             Self::Hidden => Ok(()),
