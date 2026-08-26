@@ -7,8 +7,8 @@ Where [indicatif] and [linya] draw one bar per line, `xprogress` divides a *sing
 segments, one per concurrent task. That is the natural display for parallel range-downloads of one
 file, or any "many small things at once" glance.
 
-> Early. The pure rendering core is here and tested; a terminal draw target and async
-> `AsyncRead`/`AsyncWrite` segment adapters are coming. This is a Rust rewrite of the NodeJS
+> Early. The rendering core, a terminal draw target, and async `AsyncRead`/`AsyncWrite` segment
+> adapters (the `stream` feature) are here and tested. This is a Rust rewrite of the NodeJS
 > [`xprogress`](https://github.com/miraclx/xprogress), rebuilt type-first.
 
 ## Usage
@@ -27,6 +27,16 @@ bar.segment(0).unwrap().lead_to(Units::new(72));
 let line = bar.render(40);
 assert_eq!(line.chars().count(), 40);
 println!("[{line}]");
+```
+
+## Examples
+
+Run them in a terminal to watch the bar animate. They draw to stderr and are silent when output is
+not a TTY, so they are safe to pipe.
+
+```sh
+cargo run --example download                   # simulated multi-file download, done vs lead shading
+cargo run --example stream --features stream   # segments driven by live async byte streams
 ```
 
 ## Model

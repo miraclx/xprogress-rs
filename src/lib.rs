@@ -30,10 +30,15 @@ mod target;
 mod units;
 mod width;
 
+#[cfg(feature = "stream")]
+pub mod stream;
+
 #[cfg(test)]
 mod bar_tests;
 #[cfg(test)]
 mod segment_tests;
+#[cfg(all(test, feature = "stream"))]
+mod stream_tests;
 #[cfg(test)]
 mod target_tests;
 #[cfg(test)]

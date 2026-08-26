@@ -12,7 +12,18 @@ categories = ["command-line-interface"]
 
 [dependencies]
 terminal_size = "0.4"
+tokio = { version = "1", default-features = false, optional = true }
 unicode-width = "0.2"
+
+[features]
+stream = ["dep:tokio"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "time"] }
+
+[[example]]
+name = "stream"
+required-features = ["stream"]
 
 [lints.rust]
 unused_must_use = "deny"
