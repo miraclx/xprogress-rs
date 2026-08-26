@@ -15,7 +15,7 @@ use xprogress::Pulse;
 fn main() -> std::io::Result<()> {
     let mut pulse = Pulse::new(12);
     // Indeterminate work: sweep while it runs. Here we stop after a fixed number of ticks.
-    for phase in 0..40u64 {
+    for phase in 0..70u64 {
         pulse.draw(phase)?;
         sleep(Duration::from_millis(60));
     }

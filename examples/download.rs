@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
     bar.draw()?;
 
     // Bytes arrive per chunk at different rates until every chunk is whole.
-    let rates = [7 * MIB, 5 * MIB, 4 * MIB, 2 * MIB];
+    let rates = [800_000u64, 600_000, 450_000, 300_000];
     while !bar.is_complete() {
         for (chunk, &rate) in rates.iter().enumerate() {
             bar.advance(chunk, rate);

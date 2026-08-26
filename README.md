@@ -11,6 +11,17 @@ file, or any "many small things at once" glance.
 > adapters (the `stream` feature) are here and tested. This is a Rust rewrite of the NodeJS
 > [`xprogress`](https://github.com/miraclx/xprogress), rebuilt type-first.
 
+## Demo
+
+A download client (parallel chunks, one segment each), a package-manager installer (a segmented bar
+per package, composed with indicatif), and an indeterminate pulse:
+
+![download](media/download.gif)
+
+![installer](media/installer.gif)
+
+![pulsate](media/pulsate.gif)
+
 ## Usage
 
 ```rust

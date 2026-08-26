@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn core::error::Error>> {
         let mut bar = Bar::new(package.chunks.iter().copied());
         while !bar.is_complete() {
             for (chunk, &size) in package.chunks.iter().enumerate() {
-                bar.advance(chunk, size / 8 + 1);
+                bar.advance(chunk, size / 25 + 1);
             }
             line.set_message(format!("[{}]", bar.render(28)));
             sleep(Duration::from_millis(60));
