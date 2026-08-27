@@ -82,6 +82,53 @@ impl DrawTarget {
         }
     }
 
+    /// Redraw a possibly multi-line `block` in place. `previous` is how many lines the last call drew
+    /// (`0` for the first), and the return value is how many this call drew, to pass back next time. On
+    /// a terminal it moves up to the top of the previous block and clears to the end of the screen, so a
+    /// block that grows or shrinks between frames still redraws cleanly. Dumping and hidden targets
+    /// ignore `previous` and behave like [`DrawTarget::draw`].
+    pub fn draw_block(&mut self, block: &str, previous: usize) -> io::Result<usize> {
+        let lines = block.lines().count().max(1);
+        match self {
+            Self::Terminal => {
+                let mut stderr = io::stderr().lock();
+                if previous > 1 {
+                    write!(stderr, "\x1b[{}A", previous - 1)?;
+                }
+                write!(stderr, "\r\x1b[J{block}")?;
+                stderr.flush()?;
+            }
+            Self::Hidden => {}
+            Self::Dump => {
+                let mut stdout = io::stdout().lock();
+                writeln!(stdout, "{block}")?;
+                stdout.flush()?;
+            }
+        }
+        Ok(lines)
+    }
+
+    /// Finish a multi-line block: redraw it in place like [`DrawTarget::draw_block`], then commit it
+    /// with a trailing newline so the completed block stays on screen.
+    pub fn finish_block(&mut self, block: &str, previous: usize) -> io::Result<()> {
+        match self {
+            Self::Terminal => {
+                let mut stderr = io::stderr().lock();
+                if previous > 1 {
+                    write!(stderr, "\x1b[{}A", previous - 1)?;
+                }
+                writeln!(stderr, "\r\x1b[J{block}")?;
+                stderr.flush()
+            }
+            Self::Hidden => Ok(()),
+            Self::Dump => {
+                let mut stdout = io::stdout().lock();
+                writeln!(stdout, "{block}")?;
+                stdout.flush()
+            }
+        }
+    }
+
     /// Finish drawing, leaving `tail` on its own line. Nothing when hidden.
     pub fn finish(&mut self, tail: &str) -> io::Result<()> {
         match self {
