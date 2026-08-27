@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  # Fail on any warning, so a doc or build warning is a red build.
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # Formatting is checked with nightly rustfmt, because rustfmt.toml uses nightly-only options
+  # (group_imports, imports_granularity). It is the only step that needs nightly.
+  fmt:
+    name: rustfmt (nightly)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rustfmt
+    - run: cargo +nightly fmt --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    # The pinned toolchain from rust-toolchain.toml (1.97.1) with clippy.
+    - uses: dtolnay/rust-toolchain@1.97.1
+      with:
+        components: clippy
+    - uses: Swatinem/rust-cache@v2
+    - name: clippy (default features)
+      run: cargo clippy --all-targets -- -D warnings
+    # The stream feature pulls in tokio and the stream adapters plus the stream example.
+    - name: clippy (stream feature)
+      run: cargo clippy --all-targets --features stream -- -D warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@1.97.1
+    - uses: Swatinem/rust-cache@v2
+    - name: test (default features, all targets + doctests)
+      run: cargo test --all-targets && cargo test --doc
+    # The stream module (Meter and the SegmentReader/SegmentWriter adapters) and its tests only build
+    # under the stream feature, so run the suite there too.
+    - name: test (stream feature)
+      run: cargo test --all-targets --features stream

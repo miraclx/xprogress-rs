@@ -153,6 +153,20 @@ fn header_caps_the_filled_region() {
 }
 
 #[test]
+fn the_header_caps_the_lead_frontier_not_the_done_frontier() {
+    // With buffered-ahead progress past done, the header marks the leading edge of the whole filled
+    // region (done then lead), not the done edge, so it sits at the lead frontier.
+    let mut bar = Bar::new([100u64]).with_style(Style::default().with_header('>'));
+    bar.advance(0, 30u64); // 3 cells done
+    bar.lead_to(0, 60u64); // buffered ahead to 6 cells
+    let line = bar.render(10);
+    assert_eq!(count(&line, '█'), 3, "three cells confirmed");
+    assert_eq!(count(&line, '▒'), 2, "buffered-ahead body up to the cap");
+    assert_eq!(count(&line, '>'), 1, "the header caps the lead frontier");
+    assert_eq!(count(&line, '─'), 4, "four cells empty past the frontier");
+}
+
+#[test]
 fn a_full_segment_has_no_header_cap() {
     let mut bar = Bar::new([100u64]).with_style(Style::default().with_header('>'));
     bar.advance(0, 100u64);

@@ -1,5 +1,7 @@
+use tokio::io::AsyncWriteExt as _;
+
 use crate::segment::Segment;
-use crate::stream::{Mark, Meter};
+use crate::stream::{Mark, Meter, SegmentReader, SegmentWriter};
 use crate::units::Units;
 
 #[test]
@@ -39,4 +41,45 @@ fn a_clone_shares_the_same_counters() {
     let other = Meter::clone(&meter);
     other.advance(Mark::Done, Units::new(30));
     assert_eq!(meter.snapshot().done(), Units::new(30));
+}
+
+#[tokio::test]
+async fn segment_reader_advances_the_meter_by_bytes_read() {
+    let meter = Meter::new(Units::new(11));
+    let source: &[u8] = b"hello world";
+    let mut reader = SegmentReader::new(source, Meter::clone(&meter), Mark::Lead);
+    let mut sink = Vec::new();
+    let copied = tokio::io::copy(&mut reader, &mut sink).await.unwrap();
+
+    assert_eq!(copied, 11, "every byte was read through the adapter");
+    assert_eq!(sink, source, "the bytes pass through unchanged");
+    assert_eq!(
+        meter.snapshot().lead(),
+        Units::new(11),
+        "the meter's lead advanced by the bytes read"
+    );
+    assert_eq!(
+        meter.snapshot().done(),
+        Units::new(0),
+        "the other marker is untouched"
+    );
+    // The wrapped reader is recoverable.
+    let _inner: &[u8] = reader.into_inner();
+}
+
+#[tokio::test]
+async fn segment_writer_advances_the_meter_by_bytes_written() {
+    let meter = Meter::new(Units::new(5));
+    let mut buffer = Vec::new();
+    let mut writer = SegmentWriter::new(&mut buffer, Meter::clone(&meter), Mark::Done);
+    writer.write_all(b"abcde").await.unwrap();
+    writer.flush().await.unwrap();
+
+    assert_eq!(
+        meter.snapshot().done(),
+        Units::new(5),
+        "the meter's done advanced by the bytes written"
+    );
+    drop(writer);
+    assert_eq!(buffer, b"abcde", "the bytes reached the underlying writer");
 }
