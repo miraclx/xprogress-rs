@@ -269,24 +269,26 @@ fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String)
         out.push_str(color.code());
         out.push('m');
     }
-    // The header caps the leading edge of the filled region, so it only belongs while there is still
-    // something after it. A segment filled to its full width has no frontier to mark: cap it with a
-    // solid filler instead, or it reads as if it stopped short.
-    match style.header() {
-        Some(header) if done_cells > 0 && done_cells < span => {
-            for _ in 0..done_cells - 1 {
-                out.push(style.filler());
-            }
-            out.push(header);
-        }
-        _ => {
-            for _ in 0..done_cells {
-                out.push(style.filler());
-            }
-        }
+    // The header caps the leading edge of the whole filled region (done then buffered-ahead), so it
+    // marks how far progress has reached. It only belongs while there is still something after it: a
+    // segment filled edge to edge has no frontier, so it takes the plain glyph instead of the header.
+    let head = style
+        .header()
+        .filter(|_| lead_cells > 0 && lead_cells < span);
+    let body = if head.is_some() {
+        lead_cells - 1
+    } else {
+        lead_cells
+    };
+    for cell in 0..body {
+        out.push(if cell < done_cells {
+            style.filler()
+        } else {
+            style.leader()
+        });
     }
-    for _ in done_cells..lead_cells {
-        out.push(style.leader());
+    if let Some(header) = head {
+        out.push(header);
     }
     if color.is_some() {
         out.push_str("\x1b[0m");
