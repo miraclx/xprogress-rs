@@ -97,6 +97,16 @@ impl Bar {
         }
     }
 
+    /// Advance segment `index`'s buffered-ahead marker by `delta`, staying at or ahead of its confirmed
+    /// progress. A no-op if `index` is out of range. Pair this with [`Bar::advance`] to shade bytes
+    /// received (lead) apart from bytes confirmed (done): advance the lead as bytes arrive, advance the
+    /// done as they are written.
+    pub fn advance_lead(&mut self, index: usize, delta: impl Into<Units>) {
+        if let Some(segment) = self.segments.get_mut(index) {
+            segment.advance_lead(delta.into());
+        }
+    }
+
     /// Borrow a segment by position, for finer control than [`Bar::advance`].
     pub fn segment(&mut self, index: usize) -> Option<&mut Segment> {
         self.segments.get_mut(index)
@@ -135,6 +145,20 @@ impl Bar {
     pub fn finish(&mut self) -> io::Result<()> {
         let line = self.rendered();
         self.target.finish(&line)
+    }
+
+    /// Render the whole bar's [`Bar::aggregate`] as a single two-tone bar of exactly `width` cells: one
+    /// summary bar whose done and lead are the sums across every segment. Pair it with [`Bar::render`]
+    /// to draw an aggregate header line above the per-segment line, as a chunked download does.
+    #[must_use]
+    pub fn render_aggregate(&self, width: u16) -> String {
+        let progress = self.aggregate();
+        let mut segment = Segment::new(progress.capacity());
+        segment.set_done(progress.done());
+        segment.lead_to(progress.lead());
+        let mut out = String::new();
+        render_segment(&segment, width, &self.style, &mut out);
+        out
     }
 
     /// Render at the bar's own resolved width.

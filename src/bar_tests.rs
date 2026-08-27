@@ -109,6 +109,30 @@ fn aggregate_sums_all_segments() {
 }
 
 #[test]
+fn lead_shades_the_buffered_region_between_done_and_empty() {
+    let mut bar = Bar::new([100u64]);
+    bar.advance(0, 30u64); // 30% confirmed
+    bar.advance_lead(0, 30u64); // buffered ahead to 60%
+    let line = bar.render(10);
+    assert_eq!(count(&line, '█'), 3, "three cells done");
+    assert_eq!(count(&line, '▒'), 3, "three cells buffered-ahead");
+    assert_eq!(count(&line, '─'), 4, "four cells empty");
+}
+
+#[test]
+fn render_aggregate_sums_done_and_lead_across_segments() {
+    let mut bar = Bar::new([100u64, 100]);
+    bar.advance(0, 50u64); // segment 0: 50 done
+    bar.advance_lead(1, 50u64); // segment 1: 50 buffered ahead, 0 done
+    // Aggregate: done 50, lead 100, capacity 200.
+    let line = bar.render_aggregate(20);
+    assert_eq!(cells(&line), 20, "exactly the requested width");
+    assert_eq!(count(&line, '█'), 5, "done is 50/200");
+    assert_eq!(count(&line, '▒'), 5, "lead adds another 50/200");
+    assert_eq!(count(&line, '─'), 10, "the remaining half is empty");
+}
+
+#[test]
 fn color_adds_ansi_but_keeps_the_display_width() {
     let mut bar = Bar::new([100u64]).with_style(Style::default().with_color(Color::Cyan));
     bar.advance(0, 50u64);
