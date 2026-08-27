@@ -127,3 +127,20 @@ fn header_caps_the_filled_region() {
     assert_eq!(count(&line, '>'), 1, "one header tip");
     assert_eq!(count(&line, '─'), 5, "five empty");
 }
+
+#[test]
+fn a_segment_color_overrides_the_bar_color() {
+    let mut bar = Bar::new([50u64, 50]).with_style(Style::default().with_color(Color::Cyan));
+    bar.segment(0).unwrap().set_color(Color::Magenta);
+    bar.advance(0, 50u64);
+    bar.advance(1, 50u64);
+    let line = bar.render(10);
+    assert!(
+        line.contains("\x1b[35m"),
+        "segment 0 uses its magenta override"
+    );
+    assert!(
+        line.contains("\x1b[36m"),
+        "segment 1 uses the cyan bar default"
+    );
+}

@@ -1,5 +1,6 @@
 //! A single independent progress inside a [`Bar`](crate::Bar).
 
+use crate::style::Color;
 use crate::units::{Progress, Units};
 
 /// One independent progress value. Every mutator preserves the invariant
@@ -10,6 +11,7 @@ pub struct Segment {
     capacity: Units,
     done: Units,
     lead: Units,
+    color: Option<Color>,
 }
 
 impl Segment {
@@ -19,6 +21,7 @@ impl Segment {
             capacity,
             done: Units::new(0),
             lead: Units::new(0),
+            color: None,
         }
     }
 
@@ -66,5 +69,15 @@ impl Segment {
     /// A snapshot of this segment's progress.
     pub const fn progress(self) -> Progress {
         Progress::new(self.done, self.lead, self.capacity)
+    }
+
+    /// This segment's color override, if any. When set, it overrides the bar-wide style color.
+    pub const fn color(self) -> Option<Color> {
+        self.color
+    }
+
+    /// Set this segment's color, so adjacent segments on one line can be told apart by hue.
+    pub fn set_color(&mut self, color: Color) {
+        self.color = Some(color);
     }
 }

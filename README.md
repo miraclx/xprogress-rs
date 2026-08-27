@@ -24,14 +24,14 @@ An indeterminate pulse, for work with no known total:
 ## Usage
 
 ```rust
-use xprogress::{Bar, Units};
+use xprogress::Bar;
 
-// A bar with two segments (e.g. two parts of one download), sized by capacity.
-let mut bar = Bar::new(Units::new(120), [Units::new(80)]);
+// A bar with two segments (e.g. two parts of one download), sized by their byte counts.
+let mut bar = Bar::new([120u64, 80]);
 
-// Advance confirmed progress; mark bytes buffered-ahead separately.
-bar.segment(0).unwrap().advance(Units::new(48));
-bar.segment(0).unwrap().lead_to(Units::new(72));
+// Advance confirmed progress on a segment; mark bytes buffered-ahead separately.
+bar.advance(0, 48);
+bar.lead_to(0, 72);
 
 // Render to a plain string of an exact width. The bar never touches the terminal itself.
 let line = bar.render(40);
@@ -66,8 +66,9 @@ XPROGRESS_DUMP=1 cargo run --example download
   preserving `0 <= done <= lead <= capacity` by construction.
 - **Width** is divided across segments in proportion to capacity by the largest-remainder method, so
   a rendered line is always exactly the requested number of cells.
-- **Non-empty by construction:** `Bar::new` takes the first segment separately, so an empty bar is
-  unrepresentable.
+- **Rendering is separate from drawing:** `Bar::render(width)` is pure, for composing into other
+  displays (e.g. an indicatif line); `Bar::draw`/`finish` redraw in place on a terminal and stay silent
+  off a TTY.
 
 ## What it is not
 
