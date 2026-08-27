@@ -269,8 +269,11 @@ fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String)
         out.push_str(color.code());
         out.push('m');
     }
+    // The header caps the leading edge of the filled region, so it only belongs while there is still
+    // something after it. A segment filled to its full width has no frontier to mark: cap it with a
+    // solid filler instead, or it reads as if it stopped short.
     match style.header() {
-        Some(header) if done_cells > 0 => {
+        Some(header) if done_cells > 0 && done_cells < span => {
             for _ in 0..done_cells - 1 {
                 out.push(style.filler());
             }

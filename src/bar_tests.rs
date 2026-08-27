@@ -153,6 +153,19 @@ fn header_caps_the_filled_region() {
 }
 
 #[test]
+fn a_full_segment_has_no_header_cap() {
+    let mut bar = Bar::new([100u64]).with_style(Style::default().with_header('>'));
+    bar.advance(0, 100u64);
+    let line = bar.render(10);
+    assert_eq!(count(&line, '█'), 10, "filled edge to edge");
+    assert_eq!(
+        count(&line, '>'),
+        0,
+        "no cap once there is no frontier left"
+    );
+}
+
+#[test]
 fn a_segment_color_overrides_the_bar_color() {
     let mut bar = Bar::new([50u64, 50]).with_style(Style::default().with_color(Color::Cyan));
     bar.segment(0).unwrap().set_color(Color::Magenta);
