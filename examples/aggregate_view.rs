@@ -4,13 +4,16 @@
 //!
 //! Run: `cargo run --example aggregate_view`
 
-use xprogress::{Bar, Color, Style};
+use xprogress::{AnsiColor, Bar, Style};
 
 fn main() {
     // One segment per chunk, sized in bytes.
     let sizes = [520_000u64, 500_000, 500_000, 500_000, 500_000];
-    let mut bar =
-        Bar::new(sizes).with_style(Style::default().with_color(Color::Cyan).with_separator('┆'));
+    let mut bar = Bar::new(sizes).with_style(
+        Style::default()
+            .with_color(AnsiColor::Cyan)
+            .with_separator('┆'),
+    );
 
     // As a download runs, each chunk receives bytes (lead) ahead of what the reassembler has written
     // and hashed (done). Feed both: advance_lead on receipt, advance on write.

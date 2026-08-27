@@ -1,11 +1,13 @@
 //! A segmented single-line progress bar.
 
+use core::fmt::Write as _;
 use std::io;
 
+use anstyle::Color;
 use unicode_width::UnicodeWidthChar as _;
 
 use crate::segment::Segment;
-use crate::style::{Color, Style};
+use crate::style::Style;
 use crate::target::DrawTarget;
 use crate::units::{Progress, Units};
 use crate::width::Width;
@@ -62,7 +64,10 @@ impl Bar {
     /// Color each segment in order, so adjacent segments are distinguishable by hue. Extra colors are
     /// ignored; segments beyond the colors keep the style default.
     #[must_use]
-    pub fn with_segment_colors(mut self, colors: impl IntoIterator<Item = Color>) -> Self {
+    pub fn with_segment_colors(
+        mut self,
+        colors: impl IntoIterator<Item = impl Into<Color>>,
+    ) -> Self {
         for (segment, color) in self.segments.iter_mut().zip(colors) {
             segment.set_color(color);
         }
@@ -303,16 +308,15 @@ fn push_run(out: &mut String, color: Option<Color>, glyph: char, count: u16) {
     if count == 0 {
         return;
     }
-    if let Some(color) = color {
-        out.push_str("\x1b[");
-        out.push_str(color.code());
-        out.push('m');
+    let style = color.map(|color| anstyle::Style::new().fg_color(Some(color)));
+    if let Some(style) = style {
+        let _ = write!(out, "{}", style.render());
     }
     for _ in 0..count {
         out.push(glyph);
     }
-    if color.is_some() {
-        out.push_str("\x1b[0m");
+    if let Some(style) = style {
+        let _ = write!(out, "{}", style.render_reset());
     }
 }
 

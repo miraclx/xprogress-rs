@@ -47,10 +47,12 @@ mod units_tests;
 #[cfg(test)]
 mod width_tests;
 
+pub use anstyle::{AnsiColor, Color, RgbColor};
+
 pub use crate::bar::Bar;
 pub use crate::pulse::Pulse;
 pub use crate::segment::Segment;
-pub use crate::style::{Color, Style};
+pub use crate::style::Style;
 pub use crate::target::DrawTarget;
 pub use crate::units::{Percent, Progress, Units};
 pub use crate::width::Width;

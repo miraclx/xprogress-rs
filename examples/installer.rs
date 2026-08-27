@@ -10,7 +10,7 @@ use core::time::Duration;
 use std::thread;
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use xprogress::{Bar, Color, Style};
+use xprogress::{AnsiColor, Bar, Style};
 
 struct Package {
     name: &'static str,
@@ -76,7 +76,7 @@ fn install<'scope, 'env>(
         line.set_prefix(package.name);
         let mut bar = Bar::new(package.chunks.iter().copied()).with_style(
             Style::default()
-                .with_color(Color::Yellow)
+                .with_color(AnsiColor::Yellow)
                 .with_filler('▰')
                 .with_blank('▱')
                 .with_separator('·'),

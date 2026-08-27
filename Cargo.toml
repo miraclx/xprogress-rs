@@ -11,6 +11,7 @@ keywords = ["progress", "progressbar", "cli", "terminal", "bytes"]
 categories = ["command-line-interface"]
 
 [dependencies]
+anstyle = "1"
 terminal_size = "0.4"
 tokio = { version = "1", default-features = false, optional = true }
 unicode-width = "0.2"

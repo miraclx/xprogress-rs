@@ -1,62 +1,11 @@
 //! The glyphs and color a [`Bar`](crate::Bar) draws with.
+//!
+//! Colors are [`anstyle::Color`], so a caller can name one of the sixteen ANSI colors
+//! ([`anstyle::AnsiColor`]), pick from the 256-color palette, or give a full truecolor RGB value, and
+//! it renders with `anstyle` rather than a hand-rolled escape. The type is re-exported from the crate
+//! root, so callers do not depend on `anstyle` directly.
 
-/// An ANSI foreground color for the filled portion of a bar.
-#[derive(Clone, Copy, Debug)]
-pub enum Color {
-    /// ANSI red.
-    Red,
-    /// ANSI green.
-    Green,
-    /// ANSI yellow.
-    Yellow,
-    /// ANSI blue.
-    Blue,
-    /// ANSI magenta.
-    Magenta,
-    /// ANSI cyan.
-    Cyan,
-    /// ANSI white.
-    White,
-    /// Bright (high-intensity) black, usually rendered as gray.
-    BrightBlack,
-    /// Bright red.
-    BrightRed,
-    /// Bright green.
-    BrightGreen,
-    /// Bright yellow.
-    BrightYellow,
-    /// Bright blue.
-    BrightBlue,
-    /// Bright magenta.
-    BrightMagenta,
-    /// Bright cyan.
-    BrightCyan,
-    /// Bright white.
-    BrightWhite,
-}
-
-impl Color {
-    /// The SGR parameter for this color, as a static string so emitting it needs no allocation.
-    pub(crate) const fn code(self) -> &'static str {
-        match self {
-            Color::Red => "31",
-            Color::Green => "32",
-            Color::Yellow => "33",
-            Color::Blue => "34",
-            Color::Magenta => "35",
-            Color::Cyan => "36",
-            Color::White => "37",
-            Color::BrightBlack => "90",
-            Color::BrightRed => "91",
-            Color::BrightGreen => "92",
-            Color::BrightYellow => "93",
-            Color::BrightBlue => "94",
-            Color::BrightMagenta => "95",
-            Color::BrightCyan => "96",
-            Color::BrightWhite => "97",
-        }
-    }
-}
+use anstyle::Color;
 
 /// The glyphs and optional color a bar renders with. Construct with [`Style::default`] and adjust with
 /// the `with_*` builders. The filled and buffered-ahead cells take the color; empty cells stay plain.
@@ -104,10 +53,11 @@ impl Style {
 
     /// Color the confirmed (done) cells. Buffered-ahead cells take the same color unless
     /// [`Style::with_lead_color`] sets its own, and empty cells stay uncolored unless
-    /// [`Style::with_blank_color`] sets one.
+    /// [`Style::with_blank_color`] sets one. Takes anything convertible into an [`anstyle::Color`]: a
+    /// named [`anstyle::AnsiColor`], a 256-palette index, or a truecolor RGB.
     #[must_use]
-    pub fn with_color(mut self, color: Color) -> Self {
-        self.color = Some(color);
+    pub fn with_color(mut self, color: impl Into<Color>) -> Self {
+        self.color = Some(color.into());
         self
     }
 
@@ -115,16 +65,16 @@ impl Style {
     /// distinguish done from buffered by hue alone (as pip and rich do) rather than by glyph. Falls back
     /// to [`Style::with_color`] when unset.
     #[must_use]
-    pub fn with_lead_color(mut self, color: Color) -> Self {
-        self.lead_color = Some(color);
+    pub fn with_lead_color(mut self, color: impl Into<Color>) -> Self {
+        self.lead_color = Some(color.into());
         self
     }
 
     /// Color the empty cells, for a dim track behind the fill (as pip and rich draw). Uncolored by
     /// default.
     #[must_use]
-    pub fn with_blank_color(mut self, color: Color) -> Self {
-        self.blank_color = Some(color);
+    pub fn with_blank_color(mut self, color: impl Into<Color>) -> Self {
+        self.blank_color = Some(color.into());
         self
     }
 

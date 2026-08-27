@@ -10,7 +10,7 @@
 //!
 //!     cargo run --example glyphs
 
-use xprogress::{Bar, Color, Style};
+use xprogress::{AnsiColor, Bar, Style};
 
 /// A labelled candidate: how it draws, and a one-line note on what it is.
 struct Candidate {
@@ -35,7 +35,7 @@ fn candidates() -> Vec<Candidate> {
                 .with_blank('┅')
                 .with_header('╸')
                 .with_separator('┆')
-                .with_color(Color::BrightCyan),
+                .with_color(AnsiColor::BrightCyan),
         },
         Candidate {
             label: "A light",
@@ -46,7 +46,7 @@ fn candidates() -> Vec<Candidate> {
                 .with_blank('┄')
                 .with_header('╴')
                 .with_separator('┆')
-                .with_color(Color::BrightCyan),
+                .with_color(AnsiColor::BrightCyan),
         },
         Candidate {
             label: "B pip",
@@ -57,9 +57,9 @@ fn candidates() -> Vec<Candidate> {
                 .with_blank('━')
                 .with_header('╸')
                 .with_separator('┃')
-                .with_color(Color::BrightCyan)
-                .with_lead_color(Color::Cyan)
-                .with_blank_color(Color::BrightBlack),
+                .with_color(AnsiColor::BrightCyan)
+                .with_lead_color(AnsiColor::Cyan)
+                .with_blank_color(AnsiColor::BrightBlack),
         },
         Candidate {
             label: "C heavy",
@@ -70,7 +70,7 @@ fn candidates() -> Vec<Candidate> {
                 .with_blank('╌')
                 .with_header('╾')
                 .with_separator('┋')
-                .with_color(Color::BrightCyan),
+                .with_color(AnsiColor::BrightCyan),
         },
     ]
 }

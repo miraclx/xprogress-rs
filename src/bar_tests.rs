@@ -1,5 +1,7 @@
+use anstyle::AnsiColor;
+
 use crate::bar::Bar;
-use crate::style::{Color, Style};
+use crate::style::Style;
 use crate::units::Units;
 
 fn strip_ansi(line: &str) -> String {
@@ -134,7 +136,7 @@ fn render_aggregate_sums_done_and_lead_across_segments() {
 
 #[test]
 fn color_adds_ansi_but_keeps_the_display_width() {
-    let mut bar = Bar::new([100u64]).with_style(Style::default().with_color(Color::Cyan));
+    let mut bar = Bar::new([100u64]).with_style(Style::default().with_color(AnsiColor::Cyan));
     bar.advance(0, 50u64);
     let line = bar.render(10);
     assert!(line.contains("\x1b[36m"), "cyan code present");
@@ -187,8 +189,8 @@ fn lead_color_tints_the_buffered_region_apart_from_done() {
         Style::default()
             .with_filler('━')
             .with_leader('━')
-            .with_color(Color::BrightCyan)
-            .with_lead_color(Color::Cyan),
+            .with_color(AnsiColor::BrightCyan)
+            .with_lead_color(AnsiColor::Cyan),
     );
     bar.advance(0, 30u64); // done
     bar.lead_to(0, 60u64); // buffered ahead
@@ -202,7 +204,7 @@ fn lead_color_tints_the_buffered_region_apart_from_done() {
 #[test]
 fn blank_color_tints_the_empty_track() {
     let mut bar =
-        Bar::new([100u64]).with_style(Style::default().with_blank_color(Color::BrightBlack));
+        Bar::new([100u64]).with_style(Style::default().with_blank_color(AnsiColor::BrightBlack));
     bar.advance(0, 40u64);
     let line = bar.render(10);
     assert!(line.contains("\x1b[90m"), "gray track behind the fill");
@@ -211,8 +213,8 @@ fn blank_color_tints_the_empty_track() {
 
 #[test]
 fn a_segment_color_overrides_the_bar_color() {
-    let mut bar = Bar::new([50u64, 50]).with_style(Style::default().with_color(Color::Cyan));
-    bar.segment(0).unwrap().set_color(Color::Magenta);
+    let mut bar = Bar::new([50u64, 50]).with_style(Style::default().with_color(AnsiColor::Cyan));
+    bar.segment(0).unwrap().set_color(AnsiColor::Magenta);
     bar.advance(0, 50u64);
     bar.advance(1, 50u64);
     let line = bar.render(10);

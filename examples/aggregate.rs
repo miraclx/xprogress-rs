@@ -5,11 +5,16 @@
 //!
 //!     cargo run --example aggregate
 
-use xprogress::{Bar, Color, Style};
+use xprogress::{AnsiColor, Bar, Style};
 
 fn main() {
     let chunks = [40u64, 30, 20, 10];
-    let palette = [Color::Cyan, Color::Green, Color::Yellow, Color::Magenta];
+    let palette = [
+        AnsiColor::Cyan,
+        AnsiColor::Green,
+        AnsiColor::Yellow,
+        AnsiColor::Magenta,
+    ];
     println!("per-chunk segments (each its own color), and the aggregate the library computes:\n");
     for step in 1..=4u64 {
         let mut bar = Bar::new(chunks).with_segment_colors(palette);
@@ -21,7 +26,7 @@ fn main() {
         // The whole-download progress, computed from the segments; no manual math.
         let overall = bar.aggregate();
         let mut whole = Bar::new([overall.capacity().get()])
-            .with_style(Style::default().with_color(Color::Cyan));
+            .with_style(Style::default().with_color(AnsiColor::Cyan));
         whole.advance(0, overall.done().get());
 
         println!("  segments  [{}]", bar.render(40));

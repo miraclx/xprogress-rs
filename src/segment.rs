@@ -1,6 +1,7 @@
 //! A single independent progress inside a [`Bar`](crate::Bar).
 
-use crate::style::Color;
+use anstyle::Color;
+
 use crate::units::{Progress, Units};
 
 /// One independent progress value. Every mutator preserves the invariant
@@ -77,7 +78,7 @@ impl Segment {
     }
 
     /// Set this segment's color, so adjacent segments on one line can be told apart by hue.
-    pub fn set_color(&mut self, color: Color) {
-        self.color = Some(color);
+    pub fn set_color(&mut self, color: impl Into<Color>) {
+        self.color = Some(color.into());
     }
 }
