@@ -17,6 +17,22 @@ pub enum Color {
     Cyan,
     /// ANSI white.
     White,
+    /// Bright (high-intensity) black, usually rendered as gray.
+    BrightBlack,
+    /// Bright red.
+    BrightRed,
+    /// Bright green.
+    BrightGreen,
+    /// Bright yellow.
+    BrightYellow,
+    /// Bright blue.
+    BrightBlue,
+    /// Bright magenta.
+    BrightMagenta,
+    /// Bright cyan.
+    BrightCyan,
+    /// Bright white.
+    BrightWhite,
 }
 
 impl Color {
@@ -30,6 +46,14 @@ impl Color {
             Color::Magenta => "35",
             Color::Cyan => "36",
             Color::White => "37",
+            Color::BrightBlack => "90",
+            Color::BrightRed => "91",
+            Color::BrightGreen => "92",
+            Color::BrightYellow => "93",
+            Color::BrightBlue => "94",
+            Color::BrightMagenta => "95",
+            Color::BrightCyan => "96",
+            Color::BrightWhite => "97",
         }
     }
 }
