@@ -180,6 +180,36 @@ fn a_full_segment_has_no_header_cap() {
 }
 
 #[test]
+fn lead_color_tints_the_buffered_region_apart_from_done() {
+    // Color-only two-tone (as pip and rich draw): done and lead share a glyph but differ by hue, so the
+    // bar shows both a bright done color and a distinct lead color at once.
+    let mut bar = Bar::new([100u64]).with_style(
+        Style::default()
+            .with_filler('━')
+            .with_leader('━')
+            .with_color(Color::BrightCyan)
+            .with_lead_color(Color::Cyan),
+    );
+    bar.advance(0, 30u64); // done
+    bar.lead_to(0, 60u64); // buffered ahead
+    let line = bar.render(10);
+    assert!(line.contains("\x1b[96m"), "bright cyan for done cells");
+    assert!(line.contains("\x1b[36m"), "plain cyan for the lead cells");
+    assert_eq!(count(&strip_ansi(&line), '━'), 6, "six filled cells total");
+    assert_eq!(cells(&strip_ansi(&line)), 10, "still exactly ten cells");
+}
+
+#[test]
+fn blank_color_tints_the_empty_track() {
+    let mut bar =
+        Bar::new([100u64]).with_style(Style::default().with_blank_color(Color::BrightBlack));
+    bar.advance(0, 40u64);
+    let line = bar.render(10);
+    assert!(line.contains("\x1b[90m"), "gray track behind the fill");
+    assert_eq!(cells(&strip_ansi(&line)), 10, "still exactly ten cells");
+}
+
+#[test]
 fn a_segment_color_overrides_the_bar_color() {
     let mut bar = Bar::new([50u64, 50]).with_style(Style::default().with_color(Color::Cyan));
     bar.segment(0).unwrap().set_color(Color::Magenta);

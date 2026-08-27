@@ -263,12 +263,11 @@ fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String)
         (done, lead)
     };
 
-    let color = segment.color().or(style.color());
-    if let Some(color) = color {
-        out.push_str("\x1b[");
-        out.push_str(color.code());
-        out.push('m');
-    }
+    // A per-segment color overrides the style's fill color; the lead falls back to the fill color when
+    // it has no color of its own, so a glyph-distinguished bar stays single-hue as before.
+    let done_color = segment.color().or(style.color());
+    let lead_color = style.lead_color().or(done_color);
+
     // The header caps the leading edge of the whole filled region (done then buffered-ahead), so it
     // marks how far progress has reached. It only belongs while there is still something after it: a
     // segment filled edge to edge has no frontier, so it takes the plain glyph instead of the header.
@@ -280,21 +279,40 @@ fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String)
     } else {
         lead_cells
     };
-    for cell in 0..body {
-        out.push(if cell < done_cells {
-            style.filler()
-        } else {
-            style.leader()
-        });
-    }
+    let done_body = done_cells.min(body);
+    let lead_body = body - done_body;
+
+    push_run(out, done_color, style.filler(), done_body);
+    push_run(out, lead_color, style.leader(), lead_body);
     if let Some(header) = head {
-        out.push(header);
+        // The head sits on the lead frontier, so it takes the lead color; with no buffered-ahead cells
+        // it caps the done region instead and takes the done color.
+        let head_color = if lead_cells > done_cells {
+            lead_color
+        } else {
+            done_color
+        };
+        push_run(out, head_color, header, 1);
+    }
+    push_run(out, style.blank_color(), style.blank(), span - lead_cells);
+}
+
+/// Append `count` copies of `glyph` to `out`, wrapped in `color`'s SGR codes when set. Color codes are
+/// zero display width, so the run stays exactly `count` cells wide.
+fn push_run(out: &mut String, color: Option<Color>, glyph: char, count: u16) {
+    if count == 0 {
+        return;
+    }
+    if let Some(color) = color {
+        out.push_str("\x1b[");
+        out.push_str(color.code());
+        out.push('m');
+    }
+    for _ in 0..count {
+        out.push(glyph);
     }
     if color.is_some() {
         out.push_str("\x1b[0m");
-    }
-    for _ in lead_cells..span {
-        out.push(style.blank());
     }
 }
 

@@ -68,6 +68,8 @@ pub struct Style {
     header: Option<char>,
     separator: Option<char>,
     color: Option<Color>,
+    lead_color: Option<Color>,
+    blank_color: Option<Color>,
 }
 
 impl Style {
@@ -100,10 +102,29 @@ impl Style {
         self
     }
 
-    /// Color the filled and buffered-ahead cells. Empty cells stay uncolored.
+    /// Color the confirmed (done) cells. Buffered-ahead cells take the same color unless
+    /// [`Style::with_lead_color`] sets its own, and empty cells stay uncolored unless
+    /// [`Style::with_blank_color`] sets one.
     #[must_use]
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = Some(color);
+        self
+    }
+
+    /// Color the buffered-ahead (lead) cells apart from the confirmed cells, so a two-tone bar can
+    /// distinguish done from buffered by hue alone (as pip and rich do) rather than by glyph. Falls back
+    /// to [`Style::with_color`] when unset.
+    #[must_use]
+    pub fn with_lead_color(mut self, color: Color) -> Self {
+        self.lead_color = Some(color);
+        self
+    }
+
+    /// Color the empty cells, for a dim track behind the fill (as pip and rich draw). Uncolored by
+    /// default.
+    #[must_use]
+    pub fn with_blank_color(mut self, color: Color) -> Self {
+        self.blank_color = Some(color);
         self
     }
 
@@ -140,6 +161,16 @@ impl Style {
         self.color
     }
 
+    /// The buffered-ahead color, if set apart from the fill color.
+    pub const fn lead_color(&self) -> Option<Color> {
+        self.lead_color
+    }
+
+    /// The empty-cell color, if set.
+    pub const fn blank_color(&self) -> Option<Color> {
+        self.blank_color
+    }
+
     /// The separator glyph drawn between segments, if any.
     pub const fn separator(&self) -> Option<char> {
         self.separator
@@ -156,6 +187,8 @@ impl Default for Style {
             header: None,
             separator: None,
             color: None,
+            lead_color: None,
+            blank_color: None,
         }
     }
 }
