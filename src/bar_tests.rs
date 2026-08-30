@@ -110,6 +110,29 @@ fn ascii_style_uses_plain_glyphs() {
 }
 
 #[test]
+fn line_and_braille_presets_render_their_glyphs() {
+    let mut line = Bar::new([100u64]).with_style(Style::line());
+    line.advance(0, 50u64);
+    let rendered = line.render(10);
+    assert!(
+        rendered.contains('━'),
+        "the line preset uses the heavy glyph, got {rendered:?}"
+    );
+
+    let mut braille = Bar::new([100u64]).with_style(Style::braille());
+    braille.advance(0, 50u64);
+    let rendered = braille.render(10);
+    assert!(
+        rendered.contains('⣿'),
+        "braille done cells are full dots, got {rendered:?}"
+    );
+    assert!(
+        rendered.contains('⣀'),
+        "braille empty track is dotted, got {rendered:?}"
+    );
+}
+
+#[test]
 fn a_bar_with_no_segments_renders_blank() {
     let bar = Bar::new(core::iter::empty::<u64>());
     assert_eq!(cells(&bar.render(6)), 6);

@@ -40,6 +40,39 @@ impl Style {
         }
     }
 
+    /// A heavy-line style told apart by color, not glyph: a solid `━` throughout with a `╸` half-cell
+    /// head, meant to be paired with [`Style::with_color`]/[`Style::with_lead_color`] for the pip/rich
+    /// two-tone look. The empty track is a lighter `─` so it still reads with color off.
+    #[must_use]
+    pub fn line() -> Self {
+        Self {
+            filler: '━',
+            leader: '━',
+            blank: '─',
+            header: Some('╸'),
+            separator: None,
+            color: None,
+            lead_color: None,
+            blank_color: None,
+        }
+    }
+
+    /// A compact dotted style using Braille cells: `⣿` filled, `⣤` buffered-ahead, `⣀` for the empty
+    /// track. Denser than a block bar in the same width.
+    #[must_use]
+    pub fn braille() -> Self {
+        Self {
+            filler: '⣿',
+            leader: '⣤',
+            blank: '⣀',
+            header: None,
+            separator: None,
+            color: None,
+            lead_color: None,
+            blank_color: None,
+        }
+    }
+
     /// Set the glyph for confirmed (done) cells.
     #[must_use]
     pub fn with_filler(mut self, glyph: char) -> Self {
