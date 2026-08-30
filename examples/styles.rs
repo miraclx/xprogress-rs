@@ -44,14 +44,13 @@ fn main() -> std::io::Result<()> {
 
     // Rebuild each row from the current fill every frame, so there is no per-bar delta bookkeeping: the
     // buffered-ahead lead runs ahead and the confirmed done trails it by a fixed gap.
-    let block = |lead: u64| {
-        let done = lead.saturating_sub(12);
+    let block = |pct: u64| {
         let mut out = String::new();
         for (label, style) in &presets {
             let mut bar = Bar::new([100u64]).with_style(style.clone());
-            bar.advance(0, done);
-            bar.lead_to(0, lead);
-            out.push_str(&format!("  {label}  {}  {lead:>3}%\n", bar.render(width)));
+            bar.advance(0, pct);
+            bar.lead_to(0, pct);
+            out.push_str(&format!("  {label}  {}  {pct:>3}%\n", bar.render(width)));
         }
         out.trim_end().to_owned()
     };

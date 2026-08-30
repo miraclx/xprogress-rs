@@ -24,10 +24,7 @@ fn main() -> std::io::Result<()> {
     let mut target = DrawTarget::from_env();
     let mut prev = 0usize;
 
-    // Each frame the lead runs ahead; done trails it by a fixed gap, so the ▒ buffered window is always
-    // on show and visibly travels down the bar as verification catches up.
-    let frame = |lead: u64| {
-        let done = lead.saturating_sub(24);
+    let frame = |done: u64, lead: u64| {
         let mut bar = Bar::new([100u64]).with_style(style.clone());
         bar.advance(0, done);
         bar.lead_to(0, lead);
@@ -37,10 +34,17 @@ fn main() -> std::io::Result<()> {
         )
     };
 
-    for step in 0..=52u64 {
-        let block = frame((step * 2).min(100));
-        prev = target.draw_block(&block, prev)?;
+    // Phase 1: bytes flood in (lead), verification trails behind by a visible buffered band.
+    for step in 0..=50u64 {
+        let lead = (step * 2).min(100);
+        prev = target.draw_block(&frame(lead.saturating_sub(24), lead), prev)?;
         sleep(Duration::from_millis(70));
     }
-    target.finish_block(&frame(100), prev)
+    // Phase 2: the download is complete (100 received); verification drains the buffer to the end, so
+    // the bar finishes fully filled rather than with a leftover gap.
+    for done in (78u64..=100).step_by(2) {
+        prev = target.draw_block(&frame(done, 100), prev)?;
+        sleep(Duration::from_millis(70));
+    }
+    target.finish_block(&frame(100, 100), prev)
 }
