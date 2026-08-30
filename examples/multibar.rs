@@ -1,9 +1,10 @@
-//! Compose indicatif with xprogress. indicatif owns the terminal and draws a normal total-bytes bar
-//! (bytes, rate, eta, all formatted by indicatif), while an xprogress segmented line rides one of its
-//! lines as a message. indicatif is a dev-dependency only; the bridge is `Bar::render` returning a
-//! plain string, so neither side owns the other. Run it in a terminal:
+//! A multi-bar: an xprogress segmented line stacked with another bar, using indicatif for the vertical
+//! stacking xprogress deliberately does not do itself. indicatif owns the terminal and draws a normal
+//! total-bytes bar (bytes, rate, eta, all formatted by indicatif), while the xprogress segmented line
+//! rides one of its lines as a message. indicatif is a dev-dependency only; the bridge is `Bar::render`
+//! returning a plain string, so neither side owns the other. Run it in a terminal:
 //!
-//!     cargo run --example indicatif_compose
+//!     cargo run --example multibar
 
 use core::time::Duration;
 use std::thread::sleep;

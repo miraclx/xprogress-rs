@@ -39,6 +39,36 @@ assert_eq!(line.chars().count(), 40);
 println!("[{line}]");
 ```
 
+## Multi-bar (stack with indicatif)
+
+`xprogress` deliberately does not stack bars vertically. When you want that — several bars, each on its
+own line — reach for [indicatif]'s `MultiProgress` and let an `xprogress` segmented line ride one of its
+rows. The bridge is just `Bar::render` returning a `String`, so neither side owns the other:
+
+```rust
+use indicatif::{MultiProgress, ProgressBar};
+use xprogress::Bar;
+
+let multi = MultiProgress::new();
+let overall = multi.add(ProgressBar::new(total));       // an ordinary indicatif line
+let segmented = multi.add(ProgressBar::new_spinner());  // hosts the xprogress line
+
+let mut bar = Bar::new(chunk_sizes);                    // one segment per chunk
+// each tick, as work happens:
+bar.advance(chunk, n);
+overall.set_position(bar.aggregate().done().get());
+segmented.set_message(bar.render(42));                  // an xprogress line *inside* indicatif
+```
+
+Run it: `cargo run --example multibar`.
+
+## Styling
+
+A `Bar` draws with a `Style`. Presets: `Style::default()` (block), `Style::ascii()` (`#`/`=`/`-`, for
+non-UTF-8 terminals), `Style::line()` (heavy color two-tone), `Style::braille()` (dotted). Build your own
+with the `with_filler`/`with_color`/`with_separator` builders. `cargo run --example styles` shows them all
+animating together.
+
 ## Examples
 
 Run them in a terminal to watch them animate. They draw to stderr and stay silent when output is not
@@ -48,8 +78,9 @@ a TTY, so they are safe to pipe.
 cargo run --example download                   # a download client: parallel chunks, one segment each
 cargo run --example pulsate                    # an indeterminate bar sweeping back and forth
 cargo run --example stream --features stream   # segments driven by live async byte streams
+cargo run --example styles                     # every built-in Style preset, filling in step
 cargo run --example installer                  # a package manager: per-package segmented bars (via indicatif)
-cargo run --example indicatif_compose          # an xprogress line inside an indicatif MultiProgress
+cargo run --example multibar                   # an xprogress line stacked inside an indicatif multi-bar
 ```
 
 To see the frames without a terminal (logs, CI, or a quick look), dump each frame on its own line:
