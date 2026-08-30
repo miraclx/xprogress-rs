@@ -7,10 +7,6 @@ Where [indicatif] and [linya] draw one bar per line, `xprogress` divides a *sing
 segments, one per concurrent task. That is the natural display for parallel range-downloads of one
 file, or any "many small things at once" glance.
 
-> Early. The rendering core, a terminal draw target, and async `AsyncRead`/`AsyncWrite` segment
-> adapters (the `stream` feature) are here and tested. This is a Rust rewrite of the NodeJS
-> [`xprogress`](https://github.com/miraclx/xprogress), rebuilt type-first.
-
 ## Two frontiers at once
 
 The thing indicatif and linya can't show: a segment tracks **`done`** (confirmed) *and* **`lead`**
@@ -37,6 +33,10 @@ An indeterminate pulse, for work with no known total:
 ![pulsate](media/pulsate.gif)
 
 ## Usage
+
+> Early. The rendering core, a terminal draw target, and async `AsyncRead`/`AsyncWrite` segment adapters
+> (the `stream` feature) are here and tested. This is a Rust rewrite of the NodeJS
+> [`xprogress`](https://github.com/miraclx/xprogress), rebuilt type-first.
 
 ```rust
 use xprogress::Bar;
