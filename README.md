@@ -41,6 +41,8 @@ println!("[{line}]");
 
 ## Multi-bar (stack with indicatif)
 
+![an indicatif total-bytes bar stacked over an xprogress segmented line](media/multibar.gif)
+
 `xprogress` deliberately does not stack bars vertically. When you want that — several bars, each on its
 own line — reach for [indicatif]'s `MultiProgress` and let an `xprogress` segmented line ride one of its
 rows. The bridge is just `Bar::render` returning a `String`, so neither side owns the other:
@@ -63,6 +65,8 @@ segmented.set_message(bar.render(42));                  // an xprogress line *in
 Run it: `cargo run --example multibar`.
 
 ## Styling
+
+![the block, ascii, line, and braille presets filling in step](media/styles.gif)
 
 A `Bar` draws with a `Style`. Presets: `Style::default()` (block), `Style::ascii()` (`#`/`=`/`-`, for
 non-UTF-8 terminals), `Style::line()` (heavy color two-tone), `Style::braille()` (dotted). Build your own
