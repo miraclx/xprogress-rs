@@ -21,3 +21,14 @@ fn draw_block_reports_its_line_count() {
     );
     target.finish_block("first\nsecond", 2).unwrap();
 }
+
+#[test]
+fn interject_reports_the_block_line_count() {
+    let mut target = DrawTarget::hidden();
+    assert_eq!(target.interject("a retry line", "bar", 0).unwrap(), 1);
+    assert_eq!(
+        target.interject("another", "first\nsecond", 1).unwrap(),
+        2,
+        "the return value is the block's line count, not the interjected line's"
+    );
+}

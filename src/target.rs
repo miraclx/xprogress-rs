@@ -108,6 +108,35 @@ impl DrawTarget {
         Ok(lines)
     }
 
+    /// Emit `line` as permanent output above the live `block`, then redraw the block beneath it. `line`
+    /// scrolls into the terminal's history and stays while the bar keeps updating below it, so a caller
+    /// can interleave log lines (a retry, a warning) with a live bar. `previous` is the block's last line
+    /// count, and the return value is the block's new count, as with [`DrawTarget::draw_block`]. `line`
+    /// must be a single line; the block may be multi-line.
+    pub fn interject(&mut self, line: &str, block: &str, previous: usize) -> io::Result<usize> {
+        let lines = block.lines().count().max(1);
+        match self {
+            Self::Terminal => {
+                let mut stderr = io::stderr().lock();
+                if previous > 1 {
+                    write!(stderr, "\x1b[{}A", previous - 1)?;
+                }
+                // Erase the old block, print the line (it stays as scrollback), then redraw the block
+                // beneath it. The next draw_block clears from the block's top, so the line is untouched.
+                write!(stderr, "\r\x1b[J{line}\n{block}")?;
+                stderr.flush()?;
+            }
+            Self::Hidden => {}
+            Self::Dump => {
+                let mut stdout = io::stdout().lock();
+                writeln!(stdout, "{line}")?;
+                writeln!(stdout, "{block}")?;
+                stdout.flush()?;
+            }
+        }
+        Ok(lines)
+    }
+
     /// Finish a multi-line block: redraw it in place like [`DrawTarget::draw_block`], then commit it
     /// with a trailing newline so the completed block stays on screen.
     pub fn finish_block(&mut self, block: &str, previous: usize) -> io::Result<()> {
