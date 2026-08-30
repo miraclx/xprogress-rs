@@ -11,6 +11,21 @@ file, or any "many small things at once" glance.
 > adapters (the `stream` feature) are here and tested. This is a Rust rewrite of the NodeJS
 > [`xprogress`](https://github.com/miraclx/xprogress), rebuilt type-first.
 
+## Two frontiers at once
+
+The thing indicatif and linya can't show: a segment tracks **`done`** (confirmed) *and* **`lead`**
+(received but not yet confirmed) separately, as a two-tone shade. In a download, `lead` is bytes off the
+wire and `done` is bytes verified — so the shaded band between them is the buffer flying ahead of
+verification, and you watch confirmation chase it.
+
+![the confirmed frontier chasing the received frontier, with a legend](media/buffered.gif)
+
+```rust
+let mut bar = xprogress::Bar::new([100u64]);
+bar.advance_lead(0, 60); // 60 received off the wire
+bar.advance(0, 25);      // 25 of those verified — the gap between is the buffered-ahead band
+```
+
 ## Demo
 
 A download client: one file in parallel chunks, a segment per chunk, colored and animating in place:
