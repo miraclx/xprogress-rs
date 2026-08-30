@@ -22,6 +22,24 @@ pub struct Style {
 }
 
 impl Style {
+    /// A plain-ASCII style for terminals that cannot render the block and box-drawing glyphs: `#` for
+    /// confirmed fill, `=` for buffered-ahead, `-` for the empty track, and a `>` head, with no color.
+    /// A good fallback when the locale or terminal is not UTF-8; the regions stay distinct by glyph even
+    /// with color off. Layer `with_color`/`with_separator` on top if the terminal does support them.
+    #[must_use]
+    pub fn ascii() -> Self {
+        Self {
+            filler: '#',
+            leader: '=',
+            blank: '-',
+            header: Some('>'),
+            separator: None,
+            color: None,
+            lead_color: None,
+            blank_color: None,
+        }
+    }
+
     /// Set the glyph for confirmed (done) cells.
     #[must_use]
     pub fn with_filler(mut self, glyph: char) -> Self {

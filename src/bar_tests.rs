@@ -93,6 +93,23 @@ fn separator_is_reserved_from_the_width() {
 }
 
 #[test]
+fn ascii_style_uses_plain_glyphs() {
+    let mut bar = Bar::new([100u64]).with_style(Style::ascii());
+    bar.advance(0, 50u64);
+    let line = bar.render(10);
+    assert_eq!(cells(&line), 10);
+    assert!(
+        count(&line, '#') >= 4,
+        "confirmed cells use '#', got {line:?}"
+    );
+    assert!(count(&line, '-') >= 4, "empty cells use '-', got {line:?}");
+    assert!(
+        line.is_ascii(),
+        "the whole ascii bar stays ascii, got {line:?}"
+    );
+}
+
+#[test]
 fn a_bar_with_no_segments_renders_blank() {
     let bar = Bar::new(core::iter::empty::<u64>());
     assert_eq!(cells(&bar.render(6)), 6);
