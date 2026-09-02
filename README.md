@@ -5,14 +5,13 @@ terminal line, each in its own segment, with confirmed-versus-buffered (`lead`) 
 
 Where [indicatif] and [linya] draw one bar per line, `xprogress` divides a *single* line into
 segments, one per concurrent task. That is the natural display for parallel range-downloads of one
-file, or any "many small things at once" glance.
+file, or any batch of concurrent tasks you want to watch at a glance.
 
-## Two frontiers at once
+## Confirmed vs. buffered, in two tones
 
-The thing indicatif and linya can't show: a segment tracks **`done`** (confirmed) *and* **`lead`**
-(received but not yet confirmed) separately, as a two-tone shade. In a download, `lead` is bytes off the
-wire and `done` is bytes verified, so the shaded band between them is the buffer flying ahead of
-verification, and you watch confirmation chase it.
+A segment tracks **`done`** (confirmed) *and* **`lead`** (received but not yet confirmed) separately, as
+a two-tone shade. In a download, `lead` is bytes off the wire and `done` is bytes verified, so the shaded
+band between them is the buffer flying ahead of verification, and you watch confirmation chase it.
 
 ![the confirmed frontier chasing the received frontier, with a legend](media/buffered.gif)
 
@@ -36,7 +35,7 @@ An indeterminate pulse, for work with no known total:
 
 > Early. The rendering core, a terminal draw target, and async `AsyncRead`/`AsyncWrite` segment adapters
 > (the `stream` feature) are here and tested. This is a Rust rewrite of the NodeJS
-> [`xprogress`](https://github.com/miraclx/xprogress), rebuilt type-first.
+> [`xprogress`](https://github.com/miraclx/xprogress).
 
 ```rust
 use xprogress::Bar;
@@ -52,6 +51,22 @@ bar.lead_to(0, 72);
 let line = bar.render(40);
 assert_eq!(line.chars().count(), 40);
 println!("[{line}]");
+```
+
+Or draw it live to the terminal, redrawing in place as it advances. Colors come from `AnsiColor`,
+`RgbColor`, and `Color`, re-exported at the crate root:
+
+```rust,no_run
+use xprogress::{AnsiColor, Bar, Style};
+
+let mut bar = Bar::new([120u64, 80]).with_style(Style::default().with_color(AnsiColor::Cyan));
+bar.draw()?; // draw it, then redraw in place as it advances
+while !bar.is_complete() {
+    bar.advance(0, 4);
+    bar.advance(1, 3);
+    bar.draw()?;
+}
+bar.finish()?; // leave the finished bar and drop to a new line
 ```
 
 ## Multi-bar (stack with indicatif)
