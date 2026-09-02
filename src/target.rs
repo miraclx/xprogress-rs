@@ -67,19 +67,7 @@ impl DrawTarget {
     /// Show `line` as the current frame: redraw in place on a terminal, print a new line when dumping,
     /// nothing when hidden.
     pub fn draw(&mut self, line: &str) -> io::Result<()> {
-        match self {
-            Self::Terminal => {
-                let mut stderr = io::stderr().lock();
-                write!(stderr, "\r\x1b[K{line}")?;
-                stderr.flush()
-            }
-            Self::Hidden => Ok(()),
-            Self::Dump => {
-                let mut stdout = io::stdout().lock();
-                writeln!(stdout, "{line}")?;
-                stdout.flush()
-            }
-        }
+        self.emit(line, 1, false)
     }
 
     /// Redraw a possibly multi-line `block` in place. `previous` is how many lines the last call drew
@@ -88,24 +76,8 @@ impl DrawTarget {
     /// block that grows or shrinks between frames still redraws cleanly. Dumping and hidden targets
     /// ignore `previous` and behave like [`DrawTarget::draw`].
     pub fn draw_block(&mut self, block: &str, previous: usize) -> io::Result<usize> {
-        let lines = block.lines().count().max(1);
-        match self {
-            Self::Terminal => {
-                let mut stderr = io::stderr().lock();
-                if previous > 1 {
-                    write!(stderr, "\x1b[{}A", previous - 1)?;
-                }
-                write!(stderr, "\r\x1b[J{block}")?;
-                stderr.flush()?;
-            }
-            Self::Hidden => {}
-            Self::Dump => {
-                let mut stdout = io::stdout().lock();
-                writeln!(stdout, "{block}")?;
-                stdout.flush()?;
-            }
-        }
-        Ok(lines)
+        self.emit(block, previous, false)?;
+        Ok(block.lines().count().max(1))
     }
 
     /// Emit `line` as permanent output above the live `block`, then redraw the block beneath it. `line`
@@ -114,64 +86,44 @@ impl DrawTarget {
     /// count, and the return value is the block's new count, as with [`DrawTarget::draw_block`]. `line`
     /// must be a single line; the block may be multi-line.
     pub fn interject(&mut self, line: &str, block: &str, previous: usize) -> io::Result<usize> {
-        let lines = block.lines().count().max(1);
-        match self {
-            Self::Terminal => {
-                let mut stderr = io::stderr().lock();
-                if previous > 1 {
-                    write!(stderr, "\x1b[{}A", previous - 1)?;
-                }
-                // Erase the old block, print the line (it stays as scrollback), then redraw the block
-                // beneath it. The next draw_block clears from the block's top, so the line is untouched.
-                write!(stderr, "\r\x1b[J{line}\n{block}")?;
-                stderr.flush()?;
-            }
-            Self::Hidden => {}
-            Self::Dump => {
-                let mut stdout = io::stdout().lock();
-                writeln!(stdout, "{line}")?;
-                writeln!(stdout, "{block}")?;
-                stdout.flush()?;
-            }
-        }
-        Ok(lines)
+        // Erase the old block, print the line (it stays as scrollback), then redraw the block beneath it.
+        // The next draw_block clears from the block's top, so the line is untouched.
+        self.emit(&format!("{line}\n{block}"), previous, false)?;
+        Ok(block.lines().count().max(1))
     }
 
     /// Finish a multi-line block: redraw it in place like [`DrawTarget::draw_block`], then commit it
     /// with a trailing newline so the completed block stays on screen.
     pub fn finish_block(&mut self, block: &str, previous: usize) -> io::Result<()> {
+        self.emit(block, previous, true)
+    }
+
+    /// Finish drawing, leaving `tail` on its own line. Nothing when hidden.
+    pub fn finish(&mut self, tail: &str) -> io::Result<()> {
+        self.emit(tail, 1, true)
+    }
+
+    /// The one terminal write behind every draw method: move to the top of the `previous`-line block,
+    /// clear to the end of the screen (so a block that shrank leaves no remnant, and a narrowed terminal
+    /// no stale wrap), write `body`, and commit it with a trailing newline when `commit`. Hidden writes
+    /// nothing; Dump prints `body` on its own line, ignoring `previous` and `commit`.
+    fn emit(&mut self, body: &str, previous: usize, commit: bool) -> io::Result<()> {
         match self {
             Self::Terminal => {
                 let mut stderr = io::stderr().lock();
                 if previous > 1 {
                     write!(stderr, "\x1b[{}A", previous - 1)?;
                 }
-                writeln!(stderr, "\r\x1b[J{block}")?;
+                write!(stderr, "\r\x1b[J{body}")?;
+                if commit {
+                    writeln!(stderr)?;
+                }
                 stderr.flush()
             }
             Self::Hidden => Ok(()),
             Self::Dump => {
                 let mut stdout = io::stdout().lock();
-                writeln!(stdout, "{block}")?;
-                stdout.flush()
-            }
-        }
-    }
-
-    /// Finish drawing, leaving `tail` on its own line. Nothing when hidden.
-    pub fn finish(&mut self, tail: &str) -> io::Result<()> {
-        match self {
-            Self::Terminal => {
-                let mut stderr = io::stderr().lock();
-                // Redraw the final frame in place, then commit it with a newline, so the completed bar
-                // appears once rather than being printed a second time after the last in-place draw.
-                writeln!(stderr, "\r\x1b[K{tail}")?;
-                stderr.flush()
-            }
-            Self::Hidden => Ok(()),
-            Self::Dump => {
-                let mut stdout = io::stdout().lock();
-                writeln!(stdout, "{tail}")?;
+                writeln!(stdout, "{body}")?;
                 stdout.flush()
             }
         }
