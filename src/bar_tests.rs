@@ -4,6 +4,21 @@ use crate::bar::Bar;
 use crate::style::Style;
 use crate::units::Units;
 
+#[test]
+fn a_wide_glyph_filler_is_ignored_so_the_width_stays_exact() {
+    // A wide emoji cannot be a cell: it would overflow the bar's exact width, so with_filler ignores it
+    // and the default glyph stands. The rendered width holds in display columns.
+    let mut bar = Bar::new([100u64]).with_style(Style::default().with_filler('🚀'));
+    bar.advance(0, 100u64);
+    let line = strip_ansi(&bar.render(10));
+    assert_eq!(
+        line.chars().count(),
+        10,
+        "width holds; the wide glyph was rejected"
+    );
+    assert!(!line.contains('🚀'), "the wide glyph never entered the bar");
+}
+
 fn strip_ansi(line: &str) -> String {
     let mut out = String::new();
     let mut chars = line.chars();

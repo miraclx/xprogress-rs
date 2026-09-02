@@ -6,6 +6,14 @@
 //! root, so callers do not depend on `anstyle` directly.
 
 use anstyle::Color;
+use unicode_width::UnicodeWidthChar as _;
+
+/// Whether `glyph` occupies exactly one terminal column, the requirement for a bar cell: a wide glyph
+/// (an emoji) would overflow the bar's exact width, and a zero-width or control glyph would underflow it.
+/// The separator is exempt (its width is measured and reserved), so only the cell builders check this.
+fn is_single_cell(glyph: char) -> bool {
+    glyph.width() == Some(1)
+}
 
 /// The glyphs and optional color a bar renders with. Construct with [`Style::default`] and adjust with
 /// the `with_*` builders. The filled and buffered-ahead cells take the color; empty cells stay plain.
@@ -73,32 +81,44 @@ impl Style {
         }
     }
 
-    /// Set the glyph for confirmed (done) cells.
+    /// Set the glyph for confirmed (done) cells. A glyph that is not a single terminal column (a wide
+    /// emoji, a zero-width or control character) is ignored, so the bar's exact width always holds.
     #[must_use]
     pub fn with_filler(mut self, glyph: char) -> Self {
-        self.filler = glyph;
+        if is_single_cell(glyph) {
+            self.filler = glyph;
+        }
         self
     }
 
-    /// Set the glyph for buffered-ahead (lead) cells, drawn between done and lead.
+    /// Set the glyph for buffered-ahead (lead) cells, drawn between done and lead. A glyph that is not a
+    /// single terminal column is ignored (see [`Style::with_filler`]).
     #[must_use]
     pub fn with_leader(mut self, glyph: char) -> Self {
-        self.leader = glyph;
+        if is_single_cell(glyph) {
+            self.leader = glyph;
+        }
         self
     }
 
-    /// Set the glyph for empty cells.
+    /// Set the glyph for empty cells. A glyph that is not a single terminal column is ignored (see
+    /// [`Style::with_filler`]).
     #[must_use]
     pub fn with_blank(mut self, glyph: char) -> Self {
-        self.blank = glyph;
+        if is_single_cell(glyph) {
+            self.blank = glyph;
+        }
         self
     }
 
     /// Set a glyph to cap the leading edge of the filled region (the bar's "head"), like `>` in
-    /// `===>`. Off by default.
+    /// `===>`. Off by default. A glyph that is not a single terminal column is ignored (see
+    /// [`Style::with_filler`]).
     #[must_use]
     pub fn with_header(mut self, glyph: char) -> Self {
-        self.header = Some(glyph);
+        if is_single_cell(glyph) {
+            self.header = Some(glyph);
+        }
         self
     }
 

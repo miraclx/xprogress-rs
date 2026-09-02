@@ -177,7 +177,15 @@ impl Bar {
     #[must_use]
     pub fn render(&self, width: u16) -> String {
         if self.segments.is_empty() {
-            return self.style.blank().to_string().repeat(usize::from(width));
+            // All empty, but still through push_run so blank_color applies as it does in a real segment.
+            let mut out = String::new();
+            push_run(
+                &mut out,
+                self.style.blank_color(),
+                self.style.blank(),
+                width,
+            );
+            return out;
         }
         let separator = self.style.separator();
         let gaps = (self.segments.len() - 1) as u16;
