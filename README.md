@@ -23,6 +23,10 @@ bar.advance(0, 25);      // 25 of those verified; the gap between is the buffere
 
 ## Demo
 
+A package installer, each item its own segment so the chunk boundaries are visible at a glance:
+
+![installer](media/installer.gif)
+
 A download client: one file in parallel chunks, a segment per chunk, colored and animating in place:
 
 ![download](media/download.gif)
@@ -52,6 +56,9 @@ let line = bar.render(40);
 assert_eq!(line.chars().count(), 40);
 println!("[{line}]");
 ```
+
+Adjacent segments meet edge to edge by default; give the style a separator glyph to divide them, e.g.
+`Style::default().with_separator('│')` (its width is reserved so the line stays exact).
 
 Or draw it live to the terminal, redrawing in place as it advances. Colors come from `AnsiColor`,
 `RgbColor`, and `Color`, re-exported at the crate root:
