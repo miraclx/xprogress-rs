@@ -17,6 +17,7 @@ pub struct Segment {
 
 impl Segment {
     /// A fresh segment of the given capacity, with no progress.
+    #[must_use]
     pub const fn new(capacity: Units) -> Self {
         Self {
             capacity,

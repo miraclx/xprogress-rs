@@ -81,7 +81,7 @@ fn main() {
     println!("\nsame data every row: 45% done, buffered ahead to 70%.\n");
     for c in candidates() {
         // One aggregate bar: done, buffered-ahead, head, and empty all on show.
-        let mut bar = Bar::new([100u64]).with_style(c.style.clone());
+        let mut bar = Bar::new([100u64]).with_style(Style::clone(&c.style));
         bar.advance(0, 45u64);
         bar.lead_to(0, 70u64);
         println!("  {:<9}{}", c.label, bar.render(width));
@@ -93,7 +93,7 @@ fn main() {
     let fills = [(30u64, 30u64), (20, 27), (5, 15), (0, 4)];
     println!("as four chunks (shows the separator and per-chunk shading):\n");
     for c in candidates() {
-        let mut bar = Bar::new(chunks).with_style(c.style.clone());
+        let mut bar = Bar::new(chunks).with_style(Style::clone(&c.style));
         for (index, &(done, lead)) in fills.iter().enumerate() {
             bar.advance(index, done);
             bar.lead_to(index, lead);

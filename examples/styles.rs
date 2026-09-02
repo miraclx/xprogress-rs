@@ -47,7 +47,7 @@ fn main() -> std::io::Result<()> {
     let block = |pct: u64| {
         let mut out = String::new();
         for (label, style) in &presets {
-            let mut bar = Bar::new([100u64]).with_style(style.clone());
+            let mut bar = Bar::new([100u64]).with_style(Style::clone(style));
             bar.advance(0, pct);
             bar.lead_to(0, pct);
             out.push_str(&format!("  {label}  {}  {pct:>3}%\n", bar.render(width)));

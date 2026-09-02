@@ -45,6 +45,7 @@ pub struct Bar {
 
 impl Bar {
     /// Build a bar from its segment sizes. Draws to the terminal at full width by default.
+    #[must_use]
     pub fn new(sizes: impl IntoIterator<Item = impl Into<Units>>) -> Self {
         Self {
             segments: sizes.into_iter().map(|s| Segment::new(s.into())).collect(),

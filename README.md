@@ -11,7 +11,7 @@ file, or any "many small things at once" glance.
 
 The thing indicatif and linya can't show: a segment tracks **`done`** (confirmed) *and* **`lead`**
 (received but not yet confirmed) separately, as a two-tone shade. In a download, `lead` is bytes off the
-wire and `done` is bytes verified — so the shaded band between them is the buffer flying ahead of
+wire and `done` is bytes verified, so the shaded band between them is the buffer flying ahead of
 verification, and you watch confirmation chase it.
 
 ![the confirmed frontier chasing the received frontier, with a legend](media/buffered.gif)
@@ -19,7 +19,7 @@ verification, and you watch confirmation chase it.
 ```rust
 let mut bar = xprogress::Bar::new([100u64]);
 bar.advance_lead(0, 60); // 60 received off the wire
-bar.advance(0, 25);      // 25 of those verified — the gap between is the buffered-ahead band
+bar.advance(0, 25);      // 25 of those verified; the gap between is the buffered-ahead band
 ```
 
 ## Demo
@@ -58,8 +58,8 @@ println!("[{line}]");
 
 ![an indicatif total-bytes bar stacked over an xprogress segmented line](media/multibar.gif)
 
-`xprogress` deliberately does not stack bars vertically. When you want that — several bars, each on its
-own line — reach for [indicatif]'s `MultiProgress` and let an `xprogress` segmented line ride one of its
+`xprogress` deliberately does not stack bars vertically. When you want that (several bars, each on its
+own line), reach for [indicatif]'s `MultiProgress` and let an `xprogress` segmented line ride one of its
 rows. The bridge is just `Bar::render` returning a `String`, so neither side owns the other:
 
 ```rust

@@ -6,6 +6,7 @@ pub struct Units(u64);
 
 impl Units {
     /// Wrap a raw count.
+    #[must_use]
     pub const fn new(count: u64) -> Self {
         Self(count)
     }
@@ -36,6 +37,20 @@ impl From<u32> for Units {
 impl From<usize> for Units {
     fn from(count: usize) -> Self {
         Self(count as u64)
+    }
+}
+
+// Signed conversions so a bare integer literal (which defaults to `i32`) works at the call site without
+// a suffix: `bar.advance(0, 60)`. A negative count is meaningless for progress, so it saturates to zero.
+impl From<i32> for Units {
+    fn from(count: i32) -> Self {
+        Self(count.max(0) as u64)
+    }
+}
+
+impl From<i64> for Units {
+    fn from(count: i64) -> Self {
+        Self(count.max(0) as u64)
     }
 }
 

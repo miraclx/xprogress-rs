@@ -23,6 +23,7 @@ pub struct Pulse {
 
 impl Pulse {
     /// A pulse whose moving block is `block` cells long. Draws to the terminal at full width by default.
+    #[must_use]
     pub fn new(block: u16) -> Self {
         Self {
             block,

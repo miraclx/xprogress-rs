@@ -1,5 +1,5 @@
-//! The one thing indicatif and linya cannot show: a segment tracks **two** frontiers at once — `done`
-//! (confirmed) and `lead` (received but not yet confirmed) — as a two-tone shade. In a download, `lead`
+//! The one thing indicatif and linya cannot show: a segment tracks **two** frontiers at once, `done`
+//! (confirmed) and `lead` (received but not yet confirmed), shown as a two-tone shade. In a download, `lead`
 //! is bytes off the wire and `done` is bytes verified, so the shaded gap between them is the buffer
 //! flying ahead of verification. This example makes that gap the whole point: the lead surges, and the
 //! confirmed `done` chases it, with a legend so the two tones are named.
@@ -25,7 +25,7 @@ fn main() -> std::io::Result<()> {
     let mut prev = 0usize;
 
     let frame = |done: u64, lead: u64| {
-        let mut bar = Bar::new([100u64]).with_style(style.clone());
+        let mut bar = Bar::new([100u64]).with_style(Style::clone(&style));
         bar.advance(0, done);
         bar.lead_to(0, lead);
         format!(
