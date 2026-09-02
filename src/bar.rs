@@ -261,54 +261,86 @@ fn even_split(width: u16, count: usize) -> Vec<u16> {
     spans
 }
 
-/// Append one segment's `span` cells to `out`: the filled region (done, capped by the header glyph,
-/// then buffered-ahead) optionally colored, then the empty region. Color codes are zero display width,
-/// so the segment is still exactly `span` cells wide.
-fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String) {
-    if span == 0 {
-        return;
-    }
-    let capacity = segment.capacity().get();
-    let (done_cells, lead_cells) = if capacity == 0 {
-        (span, span)
-    } else {
-        let done = scale(segment.done().get(), capacity, span);
-        let lead = scale(segment.lead().get(), capacity, span).max(done);
-        (done, lead)
-    };
+/// How a segment's `span` cells divide into runs: a confirmed body, a buffered-ahead body, an optional
+/// one-cell head capping the frontier, and the empty remainder, each with its color. The four cell counts
+/// sum to exactly `span`, which is what keeps the rendered segment exactly `span` columns wide.
+struct Layout {
+    done_body: u16,
+    lead_body: u16,
+    head: Option<char>,
+    empty: u16,
+    done_color: Option<Color>,
+    lead_color: Option<Color>,
+    head_color: Option<Color>,
+    blank_color: Option<Color>,
+}
 
-    // A per-segment color overrides the style's fill color; the lead falls back to the fill color when
-    // it has no color of its own, so a glyph-distinguished bar stays single-hue as before.
-    let done_color = segment.color().or(style.color());
-    let lead_color = style.lead_color().or(done_color);
+impl Layout {
+    fn resolve(segment: &Segment, span: u16, style: &Style) -> Self {
+        let capacity = segment.capacity().get();
+        let (done_cells, lead_cells) = if capacity == 0 {
+            (span, span)
+        } else {
+            let done = scale(segment.done().get(), capacity, span);
+            let lead = scale(segment.lead().get(), capacity, span).max(done);
+            (done, lead)
+        };
 
-    // The header caps the leading edge of the whole filled region (done then buffered-ahead), so it
-    // marks how far progress has reached. It only belongs while there is still something after it: a
-    // segment filled edge to edge has no frontier, so it takes the plain glyph instead of the header.
-    let head = style
-        .header()
-        .filter(|_| lead_cells > 0 && lead_cells < span);
-    let body = if head.is_some() {
-        lead_cells - 1
-    } else {
-        lead_cells
-    };
-    let done_body = done_cells.min(body);
-    let lead_body = body - done_body;
+        // A per-segment color overrides the style's fill color; the lead falls back to the fill color
+        // when it has no color of its own, so a glyph-distinguished bar stays single-hue as before.
+        let done_color = segment.color().or(style.color());
+        let lead_color = style.lead_color().or(done_color);
 
-    push_run(out, done_color, style.filler(), done_body);
-    push_run(out, lead_color, style.leader(), lead_body);
-    if let Some(header) = head {
-        // The head sits on the lead frontier, so it takes the lead color; with no buffered-ahead cells
-        // it caps the done region instead and takes the done color.
+        // The header caps the leading edge of the filled region (done then buffered-ahead), marking how
+        // far progress has reached. It only belongs while something remains after it: a segment filled
+        // edge to edge has no frontier, so it takes the plain glyph instead of a head cell.
+        let head = style
+            .header()
+            .filter(|_| lead_cells > 0 && lead_cells < span);
+        let body = lead_cells - u16::from(head.is_some());
+        let done_body = done_cells.min(body);
+        let lead_body = body - done_body;
+        // The head sits on the lead frontier (lead color); with no buffered-ahead cells it caps the done
+        // region instead and takes the done color.
         let head_color = if lead_cells > done_cells {
             lead_color
         } else {
             done_color
         };
-        push_run(out, head_color, header, 1);
+        let empty = span - lead_cells;
+
+        debug_assert_eq!(
+            done_body + lead_body + u16::from(head.is_some()) + empty,
+            span,
+            "a segment's runs must tile its span exactly"
+        );
+        Self {
+            done_body,
+            lead_body,
+            head,
+            empty,
+            done_color,
+            lead_color,
+            head_color,
+            blank_color: style.blank_color(),
+        }
     }
-    push_run(out, style.blank_color(), style.blank(), span - lead_cells);
+}
+
+/// Append one segment's `span` cells to `out`: the confirmed body, the buffered-ahead body, an optional
+/// head, then the empty remainder. Color codes are zero display width, so the segment is still exactly
+/// `span` cells wide.
+fn render_segment(segment: &Segment, span: u16, style: &Style, out: &mut String) {
+    if span == 0 {
+        return;
+    }
+    let layout = Layout::resolve(segment, span, style);
+    push_run(out, layout.done_color, style.filler(), layout.done_body);
+    push_run(out, layout.lead_color, style.leader(), layout.lead_body);
+    if let Some(head) = layout.head {
+        push_run(out, layout.head_color, head, 1);
+    }
+    push_run(out, layout.blank_color, style.blank(), layout.empty);
 }
 
 /// Append `count` copies of `glyph` to `out`, wrapped in `color`'s SGR codes when set. Color codes are
