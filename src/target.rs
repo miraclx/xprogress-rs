@@ -64,6 +64,15 @@ impl DrawTarget {
         }
     }
 
+    /// The terminal height in rows, if this is an interactive terminal. Mirrors [`DrawTarget::columns`]
+    /// for the vertical axis: `Some` on a live terminal, `None` when there is no terminal to probe.
+    pub fn rows(&self) -> Option<u16> {
+        match self {
+            Self::Terminal => terminal_size::terminal_size().map(|(_, height)| height.0),
+            Self::Hidden | Self::Dump => None,
+        }
+    }
+
     /// Show `line` as the current frame: redraw in place on a terminal, print a new line when dumping,
     /// nothing when hidden.
     pub fn draw(&mut self, line: &str) -> io::Result<()> {
@@ -77,18 +86,6 @@ impl DrawTarget {
     /// ignore `previous` and behave like [`DrawTarget::draw`].
     pub fn draw_block(&mut self, block: &str, previous: usize) -> io::Result<usize> {
         self.emit(block, previous, false)?;
-        Ok(block.lines().count().max(1))
-    }
-
-    /// Emit `line` as permanent output above the live `block`, then redraw the block beneath it. `line`
-    /// scrolls into the terminal's history and stays while the bar keeps updating below it, so a caller
-    /// can interleave log lines (a retry, a warning) with a live bar. `previous` is the block's last line
-    /// count, and the return value is the block's new count, as with [`DrawTarget::draw_block`]. `line`
-    /// must be a single line; the block may be multi-line.
-    pub fn interject(&mut self, line: &str, block: &str, previous: usize) -> io::Result<usize> {
-        // Erase the old block, print the line (it stays as scrollback), then redraw the block beneath it.
-        // The next draw_block clears from the block's top, so the line is untouched.
-        self.emit(&format!("{line}\n{block}"), previous, false)?;
         Ok(block.lines().count().max(1))
     }
 

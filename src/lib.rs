@@ -1,4 +1,6 @@
-//! xprogress: segmented single-line progress bars.
+//! xprogress: segmented progress bars on a terminal surface.
+//!
+//! Two halves: [`Bar`] renders pure strings, [`DrawTarget`] draws them.
 //!
 //! A [`Bar`] is one line of terminal width divided into independent [`Segment`]s, each tracking its
 //! own progress against a fixed capacity. Where most progress libraries put one bar per line, this
@@ -9,8 +11,10 @@
 //! ([`Segment::lead`]), so a download can shade bytes written to disk apart from bytes received but
 //! not yet written.
 //!
-//! The core is pure and synchronous: a [`Bar`] renders to a [`String`] of an exact cell width and
+//! The bar core is pure and synchronous: a [`Bar`] renders to a [`String`] of an exact cell width and
 //! never touches a terminal, so a single owner controls drawing and there is no shared-stdout race.
+//! [`DrawTarget`] is the surface half: it draws one line or a multi-line block in place on a terminal,
+//! prints frames on their own lines when dumping, and draws nothing when hidden.
 //!
 //! ```
 //! use xprogress::Bar;
