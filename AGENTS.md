@@ -39,8 +39,9 @@ anywhere in `src/`. A new `pub` item without docs builds clean. That is current 
 
 ## Layout
 
-No `mod.rs`. Seven flat `<module>.rs` with seven sibling `<module>_tests.rs`, zero inline test modules.
-46 tests. There is no `style_tests.rs`: glyph rejection is covered only sideways, through a `Bar` test.
+No `mod.rs`. Flat `<module>.rs` with sibling `<module>_tests.rs`, no inline test modules.
+There is no `style_tests.rs`: glyph and separator validation are covered through the bar regressions.
+Run both default and stream matrices rather than relying on a fixed test count in this document.
 
 `src/stream.rs` is the one `#[cfg]`-gated module. Its tests need `--features stream` to exist at all.
 
@@ -61,8 +62,8 @@ commit. The erase is what makes a shrinking block leave no remnant. Touch nothin
 the examples against a real terminal, because the only tests run against `Hidden` (`target_tests.rs`,
 two tests), and `Terminal` and `Dump` have no coverage at all.
 
-`rows()` was added for API parity with `columns()` and has **zero tests and zero callers**, in this
-crate, in the examples, and in the README. It is on the backlog: test it or cut it.
+`rows()` has no in-crate/example/README caller, but Freyr's ledger uses it to bound terminal height.
+Keep it and improve target coverage; local non-use is not a reason to remove a shared public method.
 
 `XPROGRESS_DUMP=1` turns any `from_env()` target into `Dump`: every frame on its own stdout line. That is
 the logs-and-CI path. Setting the variable to the empty string still counts as set.
@@ -73,7 +74,10 @@ Widths are **terminal cells**, measured with `unicode-width`, never chars. A ren
 exactly the requested number of cells; the tests assert this.
 
 Cell glyphs (`filler`, `leader`, `blank`, `header`) are rejected unless they are exactly one cell wide.
-The **separator is exempt**: its measured width is reserved out of the bar, not assumed to be one.
+The **separator may be wide**: positive-width glyphs are measured, not assumed to be one cell.
+Invalid control, line/paragraph and zero-width separators leave the previous setting unchanged.
+Render retains all separators only when their full cell cost fits the requested width, including exact
+fit. Otherwise it omits all separators and allocates the full span to the segments. Width zero is empty.
 
 `Layout` (`bar.rs`) is private. It splits one span into done body, lead body, one optional head cell, and
 empty, and a debug assertion pins the tiling. The head exists only while a frontier exists: a segment
@@ -82,18 +86,17 @@ overriding the style, lead falling back to done, head on the lead frontier (`bar
 Per-segment colors are ignored by `render_aggregate`, which builds a throwaway segment.
 
 `allocate` is largest-remainder by descending remainder, ties to the earlier segment. `even_split`
-divides by the count with **no guard at zero** (`bar.rs`, zero-capacity segments aside, `render` never
-calls it empty, but nothing says so at the site). That is on the backlog.
+explicitly handles zero and keeps counts as `usize`; narrowing a segment count to terminal-cell width
+made 65,536 zero-capacity segments panic. Boundary regressions pin that class and the allocation ties.
 
 ## The `stream` module
 
-`Meter` is `Arc` over two `Relaxed` atomics with **no saturation**. `snapshot` normalizes on read
-(`done` and `lead` clamped to capacity, lead raised to done). The normalization masks the race instead of
-ordering it: two independent atomics can always be observed mid-stride. `advance` can wrap on overflow
-where every `Segment` mutator saturates. That asymmetry is on the backlog: document it or fix it.
+`Meter` is `Arc` over two `Relaxed` atomics. `advance` uses saturating atomic updates; `set` may move
+an absolute value backwards. `snapshot` clamps to capacity and raises lead to done. It is a normalized
+observation from independent loads, not a coherent two-marker transaction or a publication barrier.
 
-`SegmentReader` advances on bytes read, `SegmentWriter` on bytes written; flush and shutdown pass through
-untouched.
+`SegmentReader` advances on bytes read; `SegmentWriter` counts accepted successful writes, not flush,
+durability, hashing or expected-integrity completion. Flush and shutdown pass through untouched.
 
 `Progress::new` and `Units::saturating_add` are `pub(crate)`. Downstream cannot build a `Progress` or sum
 `Units`; it gets them from `Bar::aggregate`, `Segment::progress`, `Meter::snapshot`. That ceiling is the
