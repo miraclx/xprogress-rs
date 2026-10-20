@@ -9,15 +9,17 @@ repository = "https://github.com/miraclx/xprogress-rs"
 license = "MIT OR Apache-2.0"
 keywords = ["progress", "progressbar", "cli", "terminal", "bytes"]
 categories = ["command-line-interface"]
+# The review record is tracked in ../craft and reached through a symlink. It is not part of the library.
+exclude = ["notes", "AGENTS.md"]
+
+[features]
+stream = ["dep:tokio"]
 
 [dependencies]
 anstyle = "1"
 terminal_size = "0.4"
 tokio = { version = "1", default-features = false, optional = true }
 unicode-width = "0.2"
-
-[features]
-stream = ["dep:tokio"]
 
 [dev-dependencies]
 indicatif = "0.17"
@@ -35,4 +37,3 @@ unwrap_used = "deny"
 expect_used = "deny"
 wildcard_imports = "deny"
 std_instead_of_core = "warn"
-alloc_instead_of_core = "warn"

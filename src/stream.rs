@@ -16,12 +16,13 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use crate::segment::Segment;
 use crate::units::{Progress, Units};
 
-/// Which marker a stream adapter advances: confirmed progress or buffered-ahead.
+/// Which marker a stream adapter advances. The caller assigns their meaning; adapters count bytes
+/// read or accepted by a writer, not flush, hash, or expected-integrity completion.
 #[derive(Clone, Copy, Debug)]
 pub enum Mark {
-    /// Confirmed progress (e.g. bytes flushed to disk).
+    /// Progress the caller considers done. A [`SegmentWriter`] counts accepted writes, not flushed bytes.
     Done,
-    /// Buffered-ahead progress (e.g. bytes received but not yet flushed).
+    /// Progress the caller considers buffered ahead of done.
     Lead,
 }
 
@@ -52,13 +53,19 @@ impl Meter {
         }
     }
 
-    /// Advance a marker by `delta`.
+    /// Advance a marker by `delta`, saturating at [`u64::MAX`]. Snapshots clamp it to capacity.
     pub fn advance(&self, mark: Mark, delta: Units) {
-        self.counter(mark).fetch_add(delta.get(), Ordering::Relaxed);
+        // A relaxed atomic update preserves concurrent increments without synchronizing payload I/O.
+        let _ = self
+            .counter(mark)
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+                Some(value.saturating_add(delta.get()))
+            });
     }
 
-    /// Set a marker to an absolute value.
+    /// Set a marker to an absolute value, which may move it backwards. Snapshots clamp it to capacity.
     pub fn set(&self, mark: Mark, value: Units) {
+        // The counter is an observation, not a publication barrier for work the caller performs.
         self.counter(mark).store(value.get(), Ordering::Relaxed);
     }
 
@@ -68,8 +75,9 @@ impl Meter {
         Units::new(self.inner.capacity)
     }
 
-    /// A normalized snapshot, clamped to `0 <= done <= lead <= capacity`. Normalizing on read keeps
-    /// the advancing side lock-free.
+    /// An observational snapshot, normalized to `0 <= done <= lead <= capacity`. Independent relaxed
+    /// loads may observe markers from different instants; this is not a cross-marker transaction or
+    /// synchronization with payload I/O. Normalization does not establish flush or integrity completion.
     #[must_use]
     pub fn snapshot(&self) -> Progress {
         let capacity = self.inner.capacity;
@@ -136,7 +144,10 @@ impl<R: AsyncRead + Unpin> AsyncRead for SegmentReader<R> {
     }
 }
 
-/// Wraps an [`AsyncWrite`], advancing a [`Meter`] marker by the bytes written.
+/// Wraps an [`AsyncWrite`], advancing a [`Meter`] marker by bytes accepted by successful writes.
+///
+/// Even with [`Mark::Done`], this does not report flush, durable storage, hashing, or expected-integrity
+/// completion. Flush and shutdown are passed through without advancing the meter.
 pub struct SegmentWriter<W> {
     inner: W,
     meter: Meter,
@@ -144,7 +155,7 @@ pub struct SegmentWriter<W> {
 }
 
 impl<W> SegmentWriter<W> {
-    /// Wrap `inner`, advancing `meter`'s `mark` as bytes are written.
+    /// Wrap `inner`, advancing `meter`'s `mark` as bytes are accepted by writes, before any flush.
     pub fn new(inner: W, meter: Meter, mark: Mark) -> Self {
         Self { inner, meter, mark }
     }
