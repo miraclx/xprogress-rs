@@ -149,11 +149,21 @@ impl Style {
         self
     }
 
-    /// Set the glyph drawn between adjacent segments. Its display width is reserved out of the bar
-    /// width so the rendered line stays exact.
+    /// Set the glyph drawn between adjacent segments. Wide glyphs are supported: their display width
+    /// is reserved out of the bar width. If all separators together would exceed that width,
+    /// [`Bar::render`](crate::Bar::render) omits them all.
+    ///
+    /// Control characters, Unicode line/paragraph separators, and zero-width glyphs are ignored,
+    /// retaining the previous separator, just as invalid cell glyphs leave their builders unchanged.
+    /// This keeps separators on one line and excludes zero-width modifiers.
     #[must_use]
     pub fn with_separator(mut self, glyph: char) -> Self {
-        self.separator = Some(glyph);
+        if !glyph.is_control()
+            && !matches!(glyph, '\u{2028}' | '\u{2029}')
+            && glyph.width().is_some_and(|width| width > 0)
+        {
+            self.separator = Some(glyph);
+        }
         self
     }
 

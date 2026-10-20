@@ -1,4 +1,5 @@
 use anstyle::AnsiColor;
+use unicode_width::UnicodeWidthStr as _;
 
 use crate::bar::Bar;
 use crate::style::Style;
@@ -37,7 +38,7 @@ fn strip_ansi(line: &str) -> String {
 }
 
 fn cells(line: &str) -> usize {
-    line.chars().count()
+    line.width()
 }
 
 fn count(line: &str, glyph: char) -> usize {
@@ -105,6 +106,170 @@ fn separator_is_reserved_from_the_width() {
     assert_eq!(cells(&line), 11);
     assert_eq!(count(&line, '|'), 1);
     assert_eq!(count(&line, '─'), 10);
+}
+
+#[test]
+fn separators_are_omitted_together_only_when_they_cannot_fit() {
+    for (separator, expected) in [
+        (
+            '|',
+            ["", "█", "||", "█||", "█|▒|", "█|▒|─", "██|▒|─", "██|▒▒|─"],
+        ),
+        (
+            '界',
+            ["", "█", "█▒", "█▒─", "界界", "█界界", "█界▒界", "█界▒界─"],
+        ),
+        (
+            '\u{17d8}',
+            [
+                "",
+                "█",
+                "█▒",
+                "█▒─",
+                "██▒─",
+                "██▒▒─",
+                "\u{17d8}\u{17d8}",
+                "█\u{17d8}\u{17d8}",
+            ],
+        ),
+    ] {
+        let mut bar = Bar::new([1u64; 3]).with_style(Style::default().with_separator(separator));
+        bar.advance(0, 1u64);
+        bar.advance_lead(1, 1u64);
+        for (width, expected) in expected.into_iter().enumerate() {
+            let line = bar.render(width as u16);
+            assert_eq!(line, expected, "separator {separator:?}, width {width}");
+            assert_eq!(cells(&line), width);
+        }
+    }
+}
+
+#[test]
+fn separator_omission_preserves_weighted_allocation_and_earlier_ties() {
+    let mut bar = Bar::new([1u64, 3, 0]).with_style(Style::default().with_separator('界'));
+    bar.advance(0, 1u64);
+    bar.advance_lead(1, 3u64);
+    assert_eq!(bar.render(1), "▒", "the largest remainder gets the cell");
+    assert_eq!(
+        bar.render(2),
+        "█▒",
+        "equal remainders favor the earlier segment"
+    );
+    assert_eq!(bar.render(3), "█▒▒", "zero capacity gets no weighted share");
+}
+
+#[test]
+fn control_line_break_and_zero_width_separators_leave_the_previous_style_unchanged() {
+    let invalid = ('\0'..='\u{1f}')
+        .chain('\u{7f}'..='\u{9f}')
+        .chain(['\u{2028}', '\u{2029}', '\u{301}', '\u{200d}', '\u{fe0f}']);
+    for glyph in invalid {
+        assert_eq!(
+            Style::default().with_separator(glyph).separator(),
+            None,
+            "{glyph:?}"
+        );
+        let style = Style::default().with_separator('界').with_separator(glyph);
+        assert_eq!(style.separator(), Some('界'), "{glyph:?}");
+        let line = Bar::new([1u64; 3]).with_style(style).render(7);
+        assert_eq!(line, "─界─界─", "{glyph:?}");
+    }
+}
+
+#[test]
+fn empty_single_and_many_segments_keep_exact_cell_widths_with_separators_and_colors() {
+    for sizes in [
+        Vec::<u64>::new(),
+        vec![0],
+        vec![7],
+        vec![0; 5],
+        vec![1, 3, 0, 2, 7],
+    ] {
+        for separator in ['|', '界', '\n', '\u{301}'] {
+            let mut bar = Bar::new(sizes.iter().copied()).with_style(
+                Style::default()
+                    .with_separator(separator)
+                    .with_color(AnsiColor::Cyan)
+                    .with_lead_color(AnsiColor::Yellow)
+                    .with_blank_color(AnsiColor::BrightBlack)
+                    .with_header('>'),
+            );
+            for (index, capacity) in sizes.iter().copied().enumerate() {
+                bar.advance(index, capacity / 3);
+                bar.lead_to(index, capacity.saturating_mul(2) / 3);
+            }
+            for width in (0..=32).chain([u16::MAX]) {
+                let line = strip_ansi(&bar.render(width));
+                assert_eq!(
+                    cells(&line),
+                    usize::from(width),
+                    "{sizes:?}, {separator:?}, {width}"
+                );
+                assert!(!line.chars().any(char::is_control), "{line:?}");
+                if sizes.len() <= 1 {
+                    assert!(!line.contains(separator));
+                }
+                let aggregate = strip_ansi(&bar.render_aggregate(width));
+                assert_eq!(cells(&aggregate), usize::from(width));
+            }
+        }
+    }
+}
+
+#[test]
+fn zero_capacity_splits_give_remainder_cells_to_earlier_segments() {
+    let bar = Bar::new([0u64; 3]).with_segment_colors([
+        AnsiColor::Magenta,
+        AnsiColor::Cyan,
+        AnsiColor::Yellow,
+    ]);
+    assert_eq!(bar.render(1), "\x1b[35m█\x1b[0m");
+    assert_eq!(bar.render(2), "\x1b[35m█\x1b[0m\x1b[36m█\x1b[0m");
+    assert_eq!(
+        bar.render(4),
+        "\x1b[35m██\x1b[0m\x1b[36m█\x1b[0m\x1b[33m█\x1b[0m"
+    );
+}
+
+#[test]
+fn zero_capacity_segment_count_does_not_narrow_at_65_536() {
+    let bar = Bar::new(core::iter::repeat_n(0u64, 65_536));
+    assert_eq!(bar.render(1), "█");
+}
+
+#[test]
+fn segment_counts_at_and_above_u16_max_keep_exact_widths() {
+    for count in [65_535, 65_536, 65_537] {
+        for separator in [None, Some('|'), Some('界')] {
+            let style = separator.map_or_else(Style::default, |glyph| {
+                Style::default().with_separator(glyph)
+            });
+            let bar = Bar::new(core::iter::repeat_n(0u64, count)).with_style(style);
+            for width in [0, 1, 2, 3, u16::MAX] {
+                let line = bar.render(width);
+                assert_eq!(
+                    cells(&line),
+                    usize::from(width),
+                    "{count}, {separator:?}, {width}"
+                );
+                if width == 1 {
+                    assert_eq!(line, "█", "zero-capacity work is complete");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn high_nonzero_segment_counts_do_not_truncate_separator_budgets_or_weighted_shares() {
+    let mut bar = Bar::new(core::iter::repeat_n(1u64, 65_537))
+        .with_style(Style::default().with_separator('|'));
+    bar.advance(0, 1u64);
+    bar.advance_lead(1, 1u64);
+    assert_eq!(bar.render(0), "");
+    assert_eq!(bar.render(1), "█");
+    assert_eq!(bar.render(2), "█▒");
+    assert_eq!(cells(&bar.render(u16::MAX)), usize::from(u16::MAX));
 }
 
 #[test]

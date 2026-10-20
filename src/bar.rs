@@ -173,9 +173,14 @@ impl Bar {
     }
 
     /// Render the bar as a string of exactly `width` display cells, segments side by side joined by the
-    /// style separator. Pure: touches no terminal, so it composes inside other progress displays.
+    /// style separator. If the separators alone exceed `width`, omit all of them and allocate the full
+    /// width to the segments. When they fit exactly, only separators are visible. A zero width renders
+    /// nothing. Pure: touches no terminal, so it composes inside other progress displays.
     #[must_use]
     pub fn render(&self, width: u16) -> String {
+        if width == 0 {
+            return String::new();
+        }
         if self.segments.is_empty() {
             // All empty, but still through push_run so blank_color applies as it does in a real segment.
             let mut out = String::new();
@@ -188,9 +193,14 @@ impl Bar {
             return out;
         }
         let separator = self.style.separator();
-        let gaps = (self.segments.len() - 1) as u16;
-        let separators_width = separator.map_or(0, char_width).saturating_mul(gaps);
-        let inner = width.saturating_sub(separators_width);
+        let gaps = self.segments.len() - 1;
+        let separators_width = usize::from(separator.map_or(0, char_width)).checked_mul(gaps);
+        let (separator, inner) = match separators_width {
+            Some(reserved) if reserved <= usize::from(width) => {
+                (separator, width - reserved as u16)
+            }
+            _ => (None, width),
+        };
         let cells = allocate(&self.segments, inner);
 
         let mut out = String::new();
@@ -248,9 +258,12 @@ fn allocate(segments: &[Segment], width: u16) -> Vec<u16> {
 
 /// Split `width` evenly across `count` slots, giving the remainder to the earliest slots.
 fn even_split(width: u16, count: usize) -> Vec<u16> {
-    let count_u16 = count as u16;
-    let mut spans = vec![width / count_u16; count];
-    let mut extra = width % count_u16;
+    if count == 0 {
+        return Vec::new();
+    }
+    let width = usize::from(width);
+    let mut spans = vec![(width / count) as u16; count];
+    let mut extra = width % count;
     for span in &mut spans {
         if extra == 0 {
             break;
